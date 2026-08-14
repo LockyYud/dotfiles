@@ -1,0 +1,28 @@
+(defvar chat-input "")
+
+(defpoll bubble-history :interval "300ms" "~/.config/eww/AI/assistant.py render_history")
+
+(defwidget bubbly-chat []
+  (box :orientation "v" :class "bubbly-chat-root" :spacing 8 :space-evenly "false"
+    (scroll :class "bubbly-chat-scroll" :vscroll "true" :hscroll "false" :vexpand "true" :height 1
+      (literal :content bubble-history))
+
+    ;; input bubble (single-line, stays at bottom)
+    (box :class "label label-user bubbly-input-wrapper" :vexpand "false" :valign "end"
+      (input :class "bubbly-input"
+             :value chat-input
+             :valign "center"
+             :onchange "eww -c ~/.config/eww update chat-input='{}'"
+             :onaccept "~/.config/eww/bubbly/chat-input.sh '{}'"))))
+
+;final eww window
+(defwindow bubbly
+           :geometry (geometry :x "0%"
+                               :y "-2%"
+                               :width "460px"
+                               :height "1000px"
+                               :anchor "bottom left")
+           :windowtype "normal"
+           :focusable "true"
+           :wm-ignore false
+(bubbly-chat))

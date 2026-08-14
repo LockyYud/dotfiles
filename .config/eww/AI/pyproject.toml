@@ -1,0 +1,9 @@
+[project]
+name = "eww-ai-assistant"
+version = "0.1.0"
+description = "Personal AI assistant backend for eww / bubbly"
+requires-python = ">=3.10"
+dependencies = [
+    "openai",
+    "mem0ai",
+]

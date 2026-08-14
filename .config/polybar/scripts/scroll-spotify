@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# Spotify polybar script with better Vietnamese text support
+
+# Set the maximum length for the output
+MAX_LENGTH=50
+
+# Get Spotify metadata
+if pgrep -x "spotify" > /dev/null; then
+    # Force UTF-8 encoding
+    export LANG=en_US.UTF-8
+    export LC_ALL=en_US.UTF-8
+    
+    artist=$(playerctl -p spotify metadata artist 2>/dev/null)
+    title=$(playerctl -p spotify metadata title 2>/dev/null)
+    
+    if [ -n "$artist" ] && [ -n "$title" ]; then
+        # Ensure proper UTF-8 encoding
+        artist=$(echo "$artist" | iconv -f UTF-8 -t UTF-8//TRANSLIT 2>/dev/null || echo "$artist")
+        title=$(echo "$title" | iconv -f UTF-8 -t UTF-8//TRANSLIT 2>/dev/null || echo "$title")
+        
+        text="$artist - $title"
+        
+        # Truncate if longer than MAX_LENGTH
+        if [ ${#text} -gt $MAX_LENGTH ]; then
+            # Use cut with UTF-8 byte handling
+            text=$(echo "$text" | cut -c 1-$MAX_LENGTH)"..."
+        fi
+        
+        # Output with UTF-8 encoding explicitly set
+        echo -e "$text"
+    else
+        echo "No song playing"
+    fi
+else
+    echo "Spotify not running"
+fi

@@ -1,0 +1,12 @@
+tags*
+Session.vim
+plugged/*
+session/*
+!*.keep
+plug.vim
+plug.vim.old
+.netrwhist
+pack/
+plugin/
+db_ui
+db_ui/

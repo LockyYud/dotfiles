@@ -1,0 +1,12 @@
+#!/bin/bash
+
+STATUS=$(playerctl -p spotify status 2> /dev/null)
+NAMESONG=$(playerctl --player spotify metadata --format "{{title}}")
+# playerctl --player="playerctld" metadata --format "{{title}}"
+if [[ $STATUS == "Playing" ]]; then
+    echo ${NAMESONG}   
+elif [[ $STATUS == "Paused" ]]; then
+    echo ${NAMESONG}
+else
+    echo ""
+fi

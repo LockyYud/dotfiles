@@ -1,0 +1,76 @@
+/*
+ * Spotify Search Theme for Rofi
+ * Inspired by Spotify's design
+ */
+
+* {
+    spotify-green: #1DB954;
+    spotify-black: #191414;
+    spotify-white: #FFFFFF;
+    spotify-gray: #535353;
+    
+    background-color: @spotify-black;
+    text-color: @spotify-white;
+}
+
+window {
+    width: 45%;
+    border: 0;
+    border-radius: 8px;
+    padding: 25px;
+}
+
+inputbar {
+    children: [prompt, entry];
+    spacing: 12px;
+    padding: 8px;
+    margin: 0 0 15px 0;
+    border: 1px solid @spotify-gray;
+    border-radius: 24px;
+}
+
+prompt {
+    background-color: @spotify-green;
+    text-color: @spotify-black;
+    padding: 8px 12px;
+    border-radius: 50%;
+}
+
+entry {
+    padding: 8px;
+    placeholder: "Search for songs...";
+    placeholder-color: @spotify-gray;
+}
+
+listview {
+    lines: 8;
+    spacing: 8px;
+    padding: 8px 0;
+}
+
+element {
+    padding: 10px;
+    spacing: 10px;
+    border-radius: 4px;
+}
+
+element selected {
+    background-color: @spotify-green;
+    text-color: @spotify-black;
+}
+
+element-icon {
+    size: 24px;
+    padding: 0px 10px 0px 0px;
+}
+
+element-text {
+    vertical-align: 0.5;
+}
+
+message {
+    padding: 10px;
+    border-radius: 4px;
+    background-color: @spotify-gray;
+    text-color: @spotify-white;
+} 

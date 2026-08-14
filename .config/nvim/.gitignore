@@ -1,0 +1,4 @@
+tags*
+.netrwhist
+autoload/plugged/*
+/deps

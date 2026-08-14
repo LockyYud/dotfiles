@@ -1,0 +1,37 @@
+# Secret and local runtime data
+.config/secrets/
+.config/gh/hosts.yml
+.config/ngrok/ngrok.yml
+.config/eww/AI/*_api_key
+.config/eww/AI/openai_api_key
+.config/eww/AI/notion_api_key
+.config/eww/AI/tavily_api_key
+.config/eww/AI/notion_task_database_id
+.config/eww/AI/.venv/
+.config/eww/AI/data/
+.config/eww/AI/tasks.json
+.config/eww/AI/*.log
+.config/eww/AI/__pycache__/
+
+# Nested repositories and generated files
+**/.git/
+**/__pycache__/
+*.pyc
+*.log
+
+# App state that belongs in ~/.config, not in dotfiles
+.config/google-chrome/
+.config/google-chrome copy/
+.config/chromium/
+.config/Code/
+.config/Cursor/
+.config/Antigravity/
+.config/browseruse/
+.config/session/
+.config/pulse/cookie
+**/Cookies
+**/Cookies-journal
+**/Trust Tokens
+**/Trust Tokens-journal
+**/Safe Browsing Cookies
+**/Safe Browsing Cookies-journal

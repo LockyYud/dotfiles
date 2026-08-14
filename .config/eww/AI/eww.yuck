@@ -1,0 +1,39 @@
+(defpoll ai-tasks-yuck :interval "2s" "~/.config/eww/AI/assistant.py render_tasks")
+(defpoll ai-status :interval "0.5s" "~/.config/eww/AI/assistant.py render_status")
+
+;; chat history (user + assistant)
+(defpoll ai-chat-yuck :interval "2s" "~/.config/eww/AI/assistant.py render_history")
+
+(defwidget ai-tasks []
+  (box :class "ai-tasks-window" :orientation "v" :space-evenly "false" :spacing 8
+    (box :class "ai-tasks-header" :orientation "h" :space-evenly "false"
+      (label :class "ai-tasks-title" :xalign 0 :halign "start" :text "Tasks")
+      (label :class "ai-tasks-status" :xalign 1 :halign "end" :text ai-status))
+
+    (scroll :class "ai-tasks-scroll" :vexpand "true"
+      (literal :content ai-tasks-yuck))
+
+    (button :class "ai-tasks-add-btn"
+            :halign "fill"
+            :onclick "~/.config/eww/AI/scripts/add-task.sh"
+            "Add task")))
+
+(defwindow ai-tasks-window
+  :windowtype "normal"
+  :wm-ignore true
+  :monitor 0
+  :geometry (geometry :anchor "top right" :x "20px" :y "60px" :width "320px" :height "420px")
+  (ai-tasks))
+
+(defwidget ai-chat []
+  (box :class "ai-chat-window" :orientation "v" :space-evenly "false"
+    (literal :content ai-chat-yuck)))
+
+(defwindow ai-chat-window
+  :windowtype "dock"
+  :wm-ignore true
+  :monitor 0
+  :geometry (geometry :x "5%" :y "5%" :anchor "bottom left" :width "40%" :height "230px")
+  (ai-chat))
+
+

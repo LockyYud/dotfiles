@@ -1,0 +1,53 @@
+#!/bin/bash
+
+# Check if Bluetooth is powered on
+if ! bluetoothctl show | grep -q "Powered: yes"; then
+    echo "󰂲"
+    exit 0
+fi
+
+# Get connected device
+connected_device=$(bluetoothctl devices Connected | head -n1 | awk '{print $2}')
+
+if [ -z "$connected_device" ]; then
+    echo "�"
+    exit 0
+fi
+
+# Get device info
+device_info=$(bluetoothctl info "$connected_device" 2>/dev/null)
+
+# Get device name and shorten it
+device_name=$(echo "$device_info" | grep "Alias:" | cut -d: -f2 | xargs)
+if [ -z "$device_name" ]; then
+    device_name=$(echo "$device_info" | grep "Name:" | cut -d: -f2 | xargs)
+fi
+
+# Shorten device name (max 10 chars)
+if [ ${#device_name} -gt 10 ]; then
+    short_name="${device_name:0:10}.."
+else
+    short_name="$device_name"
+fi
+
+# Get battery percentage
+battery=$(echo "$device_info" | grep "Battery Percentage" | grep -oP '\(\K[0-9]+')
+
+# Build output
+if [ -n "$battery" ]; then
+    # Choose battery icon based on level
+    if [ "$battery" -ge 80 ]; then
+        bat_icon="󰥈"
+    elif [ "$battery" -ge 60 ]; then
+        bat_icon="󰥆"
+    elif [ "$battery" -ge 40 ]; then
+        bat_icon="󰥄"
+    elif [ "$battery" -ge 20 ]; then
+        bat_icon="󰥂"
+    else
+        bat_icon="󰥀"
+    fi
+    echo "󰂱 $short_name $bat_icon $battery%"
+else
+    echo "󰂱 $short_name"
+fi

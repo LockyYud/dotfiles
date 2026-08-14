@@ -1,0 +1,35 @@
+/** Colors *******************************************/
+$bg: #0d47a1;
+$bg-alt: #16161e;
+$fg: #e3f2fd;
+$fg-alt: #a9b1d6;
+$red: #db4b4b;
+$green: #9ece6a;
+$yellow: #e0af68;
+$orange: #ff9e64;
+$blue: #7aa2f7;
+$purple: #9d7cd8;
+$cyan: #7dcfff;
+$gray: #565f89;
+$gray-alt: #292E42;
+
+@import "./System-Menu/eww.scss";
+@import "./Player/eww.scss";
+@import "./Misc/eww.scss";
+@import "./Main/eww.scss";
+@import "./AI/eww.scss";
+
+// background = #0d47a1
+// background-alt = #24283b
+// foreground = #e3f2fd
+// primary = #e0af68
+// secondary = #9ece6a
+// alert = #db4b4b
+// disabled = #414868
+// blue = #7aa2f7  
+// bar1 = #1e88e5
+// bar2 = #2196f3
+// bar3 = #42a5f5
+// bar4 = #64b5f6
+// bar5 = #90caf9
+// bar6 = #bbdefb

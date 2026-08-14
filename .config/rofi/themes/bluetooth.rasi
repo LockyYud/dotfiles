@@ -1,0 +1,140 @@
+/*****----- Configuration -----*****/
+configuration {
+    show-icons:                 false;
+}
+
+/*****----- Global Properties -----*****/
+* {
+    font:                        "JetBrains Mono Nerd Font 12";
+    background:                  #181825;
+    background-alt:              #1e1e2e;
+    foreground:                  #cdd6f4;
+    selected:                    #11111b;
+    active:                      #89b4fa;  /* Bluetooth blue */
+    urgent:                      #7ba5dd;  /* Secondary blue from your colors */
+}
+
+/*****----- Main Window -----*****/
+window {
+    transparency:                "real";
+    location:                    center;
+    anchor:                      center;
+    fullscreen:                  false;
+    width:                       600px;
+    x-offset:                    0px;
+    y-offset:                    0px;
+
+    padding:                     0px;
+    border:                      2px solid;
+    border-radius:               12px;
+    border-color:                @active;
+    cursor:                      "default";
+    background-color:            @background;
+}
+
+/*****----- Main Box -----*****/
+mainbox {
+    enabled:                     true;
+    spacing:                     0px;
+    margin:                      0px;
+    padding:                     20px;
+    border:                      0px solid;
+    border-radius:               0px;
+    border-color:                @selected;
+    background-color:            transparent;
+    children:                    [ "inputbar", "listview" ];
+}
+
+/*****----- Inputbar -----*****/
+inputbar {
+    enabled:                     true;
+    spacing:                     10px;
+    padding:                     15px;
+    border-radius:               10px;
+    background-color:            @background-alt;
+    text-color:                  @foreground;
+    children:                    [ "textbox-prompt-colon", "prompt" ];
+    margin:                      0px 0px 20px 0px;
+}
+
+textbox-prompt-colon {
+    enabled:                     true;
+    expand:                      false;
+    str:                         "󰂯";  /* Bluetooth icon */
+    padding:                     10px 15px;
+    border-radius:               10px;
+    background-color:            @active;
+    text-color:                  @background;
+    font:                        "JetBrains Mono Nerd Font 14";
+}
+
+prompt {
+    enabled:                     true;
+    padding:                     10px;
+    border-radius:               8px;
+    background-color:            @background-alt;
+    text-color:                  @foreground;
+    font:                        "JetBrains Mono Nerd Font Bold 12";
+}
+
+/*****----- Listview -----*****/
+listview {
+    enabled:                     true;
+    columns:                     1;
+    lines:                       8;
+    cycle:                       true;
+    dynamic:                     true;
+    scrollbar:                   false;
+    layout:                      vertical;
+    reverse:                     false;
+    fixed-height:                true;
+    fixed-columns:               true;
+    
+    spacing:                     10px;
+    margin:                      0px;
+    padding:                     0px;
+    background-color:            transparent;
+    cursor:                      "default";
+}
+
+/*****----- Elements -----*****/
+element {
+    enabled:                     true;
+    padding:                     12px;
+    border-radius:               8px;
+    background-color:            @background-alt;
+    text-color:                  @foreground;
+    cursor:                      pointer;
+}
+
+element-text {
+    background-color:            transparent;
+    text-color:                  inherit;
+    cursor:                      inherit;
+    vertical-align:              0.5;
+    horizontal-align:            0.0;
+}
+
+element selected.normal {
+    border:                      2px solid;
+    border-color:                @active;
+    background-color:            var(background);
+    text-color:                  var(active);
+}
+
+/*****----- Message -----*****/
+message {
+    enabled:                     true;
+    margin:                      0px;
+    padding:                     15px;
+    border-radius:               10px;
+    background-color:            @background-alt;
+    text-color:                  @foreground;
+}
+
+textbox {
+    background-color:            inherit;
+    text-color:                  inherit;
+    vertical-align:              0.5;
+    horizontal-align:            0.5;
+}

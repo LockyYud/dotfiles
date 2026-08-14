@@ -1,0 +1,42 @@
+configuration {
+    font: "monospace 12";
+    show-icons: false;
+}
+
+window {
+    width: 400px;
+}
+
+listview {
+    lines: 10;
+    scrollbar: false;
+}
+
+element {
+    padding: 2px;
+    background-color: transparent;
+}
+
+element-text {
+    text-color: #ffffff;
+    background-color: transparent;
+}
+
+element selected {
+    background-color: #005577;
+    text-color: #ffffff;
+}
+
+element selected.normal {
+    background-color: #005577;
+    text-color: #ffffff;
+}
+
+element alternate {
+    background-color: #333333;
+}
+
+element normal {
+    background-color: #222222;
+}
+
