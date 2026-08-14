@@ -58,10 +58,14 @@ See `.gitignore` for the full list.
 Flags:
 
 ```sh
-~/dotfiles/bootstrap.sh --dry-run       # preview link/backup actions, no changes
-~/dotfiles/bootstrap.sh --only bspwm    # link/update a single entry
-~/dotfiles/bootstrap.sh --only eww      # re-run just the eww hybrid entries
+~/dotfiles/bootstrap.sh --dry-run          # preview link/backup actions, no changes
+~/dotfiles/bootstrap.sh --only bspwm       # link/update a single entry
+~/dotfiles/bootstrap.sh --only eww         # re-run every eww hybrid entry
+~/dotfiles/bootstrap.sh --only eww/Main    # re-run one eww child entry
 ```
+
+`--only` must match a manifest entry exactly (or the literal `eww` group);
+anything else exits non-zero without touching `~/.config`.
 
 ## Machine-specific settings (host profiles)
 
@@ -95,7 +99,20 @@ mv ~/.config/.pre-dotfiles-backup/<ts>/<entry> ~/.config/<entry>
 Never commit real credentials. If a config needs one:
 
 - Prefer environment variables the app already supports.
-- Otherwise use a git-ignored `*.local` (or similarly patterned) file and
-  commit a `*.example` alongside it showing the expected shape.
+- Otherwise use a git-ignored `.env`/`*.local` file (already ignored
+  repo-wide) and commit a `*.example` alongside it showing the expected
+  shape — `*.example` is explicitly un-ignored so templates stay tracked.
 - Extend `.gitignore` for any new local secret/runtime file before it's
   ever staged.
+
+As a last-resort guardrail, `.githooks/pre-commit` blocks a commit whose
+staged diff matches common secret shapes (OpenAI/GitHub/Google API keys,
+Slack tokens, PEM private keys). Enable it once per clone:
+
+```sh
+git config core.hooksPath .githooks
+```
+
+It's a backstop, not a substitute for keeping real secrets out of the
+tree in the first place — bypass with `git commit --no-verify` only for
+confirmed false positives.

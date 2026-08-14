@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Blocks common secret shapes from being committed. Not a substitute for
+# .gitignore discipline — a last-resort guardrail for what slips past it.
+pattern='sk-[a-zA-Z0-9]{10,}|ghp_[a-zA-Z0-9]{20,}|gho_[a-zA-Z0-9]{20,}|AIza[0-9A-Za-z_-]{20,}|xox[baprs]-[0-9a-zA-Z-]{10,}|-----BEGIN [A-Z ]*PRIVATE KEY-----'
+
+hits="$(git diff --cached -U0 | grep -inE "$pattern" || true)"
+
+if [ -n "$hits" ]; then
+    echo "pre-commit: possible secret in staged changes, aborting commit:" >&2
+    echo "$hits" >&2
+    echo >&2
+    echo "If this is a false positive, commit with --no-verify." >&2
+    exit 1
+fi

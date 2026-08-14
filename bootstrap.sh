@@ -125,6 +125,33 @@ all_entries() {
     printf '%s\n' "${core_entries[@]}" "${eww_entries[@]}"
 }
 
+# True if $1 (a manifest entry) should be processed given --only. With no
+# --only, everything matches. "--only eww" is a meta-token covering every
+# eww_entries child; anything else must match a manifest entry exactly.
+entry_matches() {
+    local rel="$1"
+    [ -z "$ONLY" ] && return 0
+    [ "$rel" = "$ONLY" ] && return 0
+    if [ "$ONLY" = "eww" ]; then
+        case "$rel" in
+            eww/*) return 0 ;;
+        esac
+    fi
+    return 1
+}
+
+validate_only() {
+    [ -z "$ONLY" ] && return 0
+    [ "$ONLY" = "eww" ] && return 0
+    local rel
+    for rel in "${core_entries[@]}" "${eww_entries[@]}"; do
+        [ "$rel" = "$ONLY" ] && return 0
+    done
+    echo "error: --only \"$ONLY\" does not match any manifest entry" >&2
+    echo "run with --dry-run (no --only) to list valid entries" >&2
+    exit 1
+}
+
 preflight() {
     printf 'dotfiles source: %s\n' "$DOTFILES_DIR"
     printf 'config target:   %s\n' "$CONFIG_DIR"
@@ -135,30 +162,30 @@ preflight() {
         printf 'scope:           only "%s"\n' "$ONLY"
     fi
     printf '\nentries to process:\n'
-    if [ -n "$ONLY" ]; then
-        all_entries | grep -x -e "$ONLY" -e "$ONLY/.*" || printf '  (none match "%s")\n' "$ONLY"
-    else
-        all_entries | sed 's/^/  /'
-    fi
+    local rel matched=0
+    for rel in $(all_entries); do
+        entry_matches "$rel" || continue
+        matched=1
+        printf '  %s\n' "$rel"
+    done
+    [ "$matched" -eq 1 ] || printf '  (none match "%s")\n' "$ONLY"
     printf '\n'
 }
 
 main() {
+    validate_only
     preflight
 
+    local rel
     for rel in "${core_entries[@]}"; do
-        if [ -n "$ONLY" ] && [ "$rel" != "$ONLY" ]; then
-            continue
-        fi
+        entry_matches "$rel" || continue
         link_entry "$rel"
     done
 
-    if [ -z "$ONLY" ] || [ "$ONLY" = "eww" ]; then
-        mkdir -p "$CONFIG_DIR/eww" "$CONFIG_DIR/eww/AI"
-        for rel in "${eww_entries[@]}"; do
-            link_entry "$rel"
-        done
-    fi
+    for rel in "${eww_entries[@]}"; do
+        entry_matches "$rel" || continue
+        link_entry "$rel"
+    done
 
     if [ "$DRY_RUN" -eq 1 ]; then
         printf '\nDry run complete. No changes were made.\n'

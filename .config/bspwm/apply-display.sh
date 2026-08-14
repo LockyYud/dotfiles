@@ -18,6 +18,10 @@ connected() {
   [ -n "$1" ] && xrandr --query | grep -q "^$1 connected"
 }
 
+first_connected_output() {
+  xrandr --query | awk '/ connected/ {print $1; exit}'
+}
+
 disable_disconnected_outputs() {
   local args=()
   while read -r output; do
@@ -69,18 +73,29 @@ fi
 
 disable_disconnected_outputs
 
-if connected "$SECONDARY" && connected "$TERTIARY"; then
-  xrandr --output "$PRIMARY" --primary --auto --pos 0x0 \
-         --output "$SECONDARY" --auto --pos 1920x0 \
-         --output "$TERTIARY" --auto --pos 3840x0
-elif connected "$SECONDARY"; then
-  xrandr --output "$PRIMARY" --primary --auto --pos 0x0 \
-         --output "$SECONDARY" --auto --right-of "$PRIMARY"
-elif connected "$TERTIARY"; then
-  xrandr --output "$PRIMARY" --primary --auto --pos 0x0 \
-         --output "$TERTIARY" --auto --right-of "$PRIMARY"
-else
-  xrandr --output "$PRIMARY" --primary --auto
+# If the profile's primary isn't actually present on this hardware (no
+# profile, wrong host, docked/undocked), fall back to whatever xrandr
+# reports as connected instead of forcing a nonexistent output name.
+if ! connected "$PRIMARY"; then
+  PRIMARY="$(first_connected_output)"
+  SECONDARY=""
+  TERTIARY=""
+fi
+
+if [ -n "$PRIMARY" ]; then
+  if connected "$SECONDARY" && connected "$TERTIARY"; then
+    xrandr --output "$PRIMARY" --primary --auto --pos 0x0 \
+           --output "$SECONDARY" --auto --pos 1920x0 \
+           --output "$TERTIARY" --auto --pos 3840x0
+  elif connected "$SECONDARY"; then
+    xrandr --output "$PRIMARY" --primary --auto --pos 0x0 \
+           --output "$SECONDARY" --auto --right-of "$PRIMARY"
+  elif connected "$TERTIARY"; then
+    xrandr --output "$PRIMARY" --primary --auto --pos 0x0 \
+           --output "$TERTIARY" --auto --right-of "$PRIMARY"
+  else
+    xrandr --output "$PRIMARY" --primary --auto
+  fi
 fi
 
 sleep 0.2

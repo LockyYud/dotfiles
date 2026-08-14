@@ -1,3 +1,10 @@
+# Local secrets / environment overrides — never commit real values.
+# Templates stay trackable so a component can ship a setup example.
+.env
+.env.*
+*.local
+!*.example
+
 # Secret and local runtime data
 .config/secrets/
 .config/gh/hosts.yml
