@@ -1,13 +1,12 @@
 {
   "layer": "top", "position": "top", "height": 30,
-  "margin-top": 3, "margin-left": 3, "margin-right": 3,
-  "modules-left": ["niri/workspaces", "custom/launcher"],
+  "margin-top": 7, "margin-left": 8, "margin-right": 8,
+  "modules-left": ["niri/workspaces"],
   "modules-center": ["niri/window"],
   "modules-right": ["cpu", "memory", "clock", "battery", "bluetooth", "network", "pulseaudio", "tray", "custom/power"],
 
   "niri/workspaces": { "format": "{value}" },
-  "niri/window": { "max-length": 90, "separate-outputs": true },
-  "custom/launcher": { "format": "󰘳", "tooltip": false, "on-click": "~/.local/bin/vicinae toggle" },
+  "niri/window": { "max-length": 70, "separate-outputs": true },
   "cpu": { "interval": 3, "format": "  {usage}%", "tooltip": false },
   "memory": { "interval": 3, "format": "  {percentage}%", "tooltip": false },
   "network": { "format-wifi": "󰤨  {signalStrength}%", "format-ethernet": "󰈀  {ipaddr}", "format-disconnected": "󰤭", "tooltip-format-wifi": "{essid}\n{ipaddr}", "on-click": "nm-connection-editor" },

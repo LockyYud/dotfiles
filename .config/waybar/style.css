@@ -1,20 +1,43 @@
-/* Polybar-inspired warm segmented bar. */
+/* A calm, floating bar with the legacy Polybar warmth only as an accent. */
 * { border: none; border-radius: 0; font-family: "JetBrainsMono Nerd Font"; font-size: 12px; min-height: 0; }
-window#waybar { background: #2a1810; color: #f5deb3; }
-tooltip { background: #2a1810; border: 1px solid #ffb366; border-radius: 6px; }
+window#waybar { background: transparent; color: #cad3f5; }
+tooltip { background: #1e1e2e; border: 1px solid #45475a; border-radius: 8px; }
 
-#workspaces { background: #ffb366; border-radius: 0 0 6px 0; padding: 0 4px; }
-#workspaces button { color: #5a4033; font-weight: 600; padding: 0 8px; }
-#workspaces button:hover { background: #ffd699; color: #2a1810; }
-#workspaces button.active { background: #d96846; color: #fff3e0; border-radius: 4px; }
-#workspaces button.urgent { background: #d94f3d; color: #fff3e0; }
+#workspaces {
+  background: rgba(30, 30, 46, 0.94);
+  border: 1px solid rgba(69, 71, 90, 0.85);
+  border-radius: 9px;
+  padding: 2px 5px;
+}
+#workspaces button { color: #7f849c; font-weight: 600; min-width: 27px; padding: 0 5px; }
+#workspaces button:hover { background: #313244; color: #cad3f5; border-radius: 6px; }
+#workspaces button.active { background: #f5a97f; color: #1e1e2e; border-radius: 6px; }
+#workspaces button.urgent { background: #ed8796; color: #1e1e2e; border-radius: 6px; }
 
-#custom-launcher { background: #ffb366; color: #2a1810; border-radius: 0 0 6px 0; font-size: 15px; padding: 0 13px 0 9px; }
-#window { color: #f5deb3; font-weight: 600; padding: 0 14px; }
-#cpu, #memory { background: #d96846; color: #fff3e0; padding: 0 10px; }
-#clock { background: #e07a5f; color: #fff3e0; padding: 0 12px; }
-#battery, #bluetooth, #network, #pulseaudio, #tray { background: #ff8c42; color: #fff3e0; padding: 0 10px; }
-#custom-power { background: #d94f3d; color: #fff3e0; border-radius: 0 0 0 6px; font-size: 15px; padding: 0 13px; }
-#battery.warning { color: #ffd699; }
-#battery.critical { background: #d94f3d; color: #fff3e0; }
-#custom-launcher:hover, #custom-power:hover, #network:hover, #bluetooth:hover, #pulseaudio:hover, #clock:hover { background: #ffb366; color: #2a1810; }
+#window {
+  background: rgba(30, 30, 46, 0.90);
+  border: 1px solid rgba(69, 71, 90, 0.75);
+  border-radius: 9px;
+  color: #bac2de;
+  font-weight: 600;
+  padding: 0 14px;
+}
+
+#cpu, #memory, #clock, #battery, #bluetooth, #network, #pulseaudio, #tray, #custom-power {
+  background: rgba(30, 30, 46, 0.94);
+  color: #bac2de;
+  padding: 0 9px;
+}
+#cpu { border: 1px solid rgba(69, 71, 90, 0.85); border-radius: 9px 0 0 9px; }
+#memory, #clock, #battery, #bluetooth, #network, #pulseaudio, #tray, #custom-power { border-top: 1px solid rgba(69, 71, 90, 0.85); border-bottom: 1px solid rgba(69, 71, 90, 0.85); border-left: 1px solid rgba(69, 71, 90, 0.45); }
+#custom-power { border-right: 1px solid rgba(69, 71, 90, 0.85); border-radius: 0 9px 9px 0; color: #ed8796; font-size: 14px; padding-right: 11px; }
+
+#clock { color: #f5a97f; }
+#network { color: #8aadf4; }
+#bluetooth { color: #c6a0f6; }
+#pulseaudio { color: #a6da95; }
+#battery { color: #a6da95; }
+#battery.warning { color: #eed49f; }
+#battery.critical { color: #ed8796; }
+
+#custom-power:hover, #network:hover, #bluetooth:hover, #pulseaudio:hover, #clock:hover { background: #313244; }
