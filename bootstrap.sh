@@ -3,6 +3,7 @@ set -euo pipefail
 
 DOTFILES_DIR="${DOTFILES_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}"
+LOCAL_BIN_DIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
 BACKUP_DIR="$CONFIG_DIR/.pre-dotfiles-backup/$(date +%Y%m%d-%H%M%S)"
 DRY_RUN=0
 ONLY=""
@@ -12,7 +13,7 @@ usage() {
 Usage: bootstrap.sh [--dry-run] [--only <entry>] [-h|--help]
 
   --dry-run        Preview what would be linked/backed up; make no changes.
-  --only <entry>   Only process one manifest entry (e.g. bspwm, eww, nvim).
+  --only <entry>   Only process one manifest entry (e.g. niri, wayland, nvim).
   -h, --help       Show this help.
 
 With no options, bootstrap symlinks every managed entry into
@@ -58,9 +59,10 @@ backup_target() {
 }
 
 link_entry() {
-    local rel="$1"
-    local source="$DOTFILES_DIR/.config/$rel"
-    local target="$CONFIG_DIR/$rel"
+    local source_rel="$1"
+    local target="$2"
+    local backup_rel="$3"
+    local source="$DOTFILES_DIR/$source_rel"
 
     if [ ! -e "$source" ] && [ ! -L "$source" ]; then
         printf 'skip missing source %s\n' "$source" >&2
@@ -73,7 +75,7 @@ link_entry() {
     fi
 
     if [ -e "$target" ] || [ -L "$target" ]; then
-        backup_target "$target" "$rel"
+        backup_target "$target" "$backup_rel"
     fi
 
     if [ "$DRY_RUN" -eq 1 ]; then
@@ -100,41 +102,46 @@ core_entries=(
     betterlockscreen
     networkmanager-dmenu
     neofetch
+    niri
+    waybar
+    swaync
+    swaylock
+    swayidle
 )
 
-# eww is linked in hybrid mode: only the config/source files below are
-# managed, so local API keys, venvs, runtime data, logs, and task state
-# under .config/eww stay untouched.
-eww_entries=(
-    eww/Main
-    eww/Player
-    eww/System-Menu
-    eww/Misc
-    eww/bubbly
-    eww/eww.scss
-    eww/eww.yuck
-    eww/AI/assistant.py
-    eww/AI/scripts
-    eww/AI/eww.scss
-    eww/AI/eww.yuck
-    eww/AI/pyproject.toml
-    eww/AI/uv.lock
+wayland_bin_entries=(
+    niri-window-switcher
+    niri-power-menu
+    niri-wallpaper
+    niri-screenshot
+    niri-idle
+)
+
+# User-authored units are linked one by one so snap-managed units already in
+# ~/.config/systemd/user remain untouched.
+systemd_user_entries=(
+    niri-waybar.service
+    niri-swaync.service
+    niri-vicinae.service
+    niri-idle.service
+    niri-wallpaper.service
+    niri-polkit-agent.service
 )
 
 all_entries() {
-    printf '%s\n' "${core_entries[@]}" "${eww_entries[@]}"
+    printf '%s\n' "${core_entries[@]}" "${wayland_bin_entries[@]}" "${systemd_user_entries[@]/#/systemd-user/}"
 }
 
 # True if $1 (a manifest entry) should be processed given --only. With no
-# --only, everything matches. "--only eww" is a meta-token covering every
-# eww_entries child; anything else must match a manifest entry exactly.
+# --only, everything matches. "--only wayland" covers all Niri desktop
+# entries; anything else must match a manifest entry exactly.
 entry_matches() {
     local rel="$1"
     [ -z "$ONLY" ] && return 0
     [ "$rel" = "$ONLY" ] && return 0
-    if [ "$ONLY" = "eww" ]; then
+    if [ "$ONLY" = "wayland" ]; then
         case "$rel" in
-            eww/*) return 0 ;;
+            niri|waybar|swaync|swaylock|swayidle|systemd-user/*|niri-*) return 0 ;;
         esac
     fi
     return 1
@@ -142,9 +149,9 @@ entry_matches() {
 
 validate_only() {
     [ -z "$ONLY" ] && return 0
-    [ "$ONLY" = "eww" ] && return 0
+    [ "$ONLY" = "wayland" ] && return 0
     local rel
-    for rel in "${core_entries[@]}" "${eww_entries[@]}"; do
+    for rel in "${core_entries[@]}" "${wayland_bin_entries[@]}" "${systemd_user_entries[@]/#/systemd-user/}"; do
         [ "$rel" = "$ONLY" ] && return 0
     done
     echo "error: --only \"$ONLY\" does not match any manifest entry" >&2
@@ -179,12 +186,17 @@ main() {
     local rel
     for rel in "${core_entries[@]}"; do
         entry_matches "$rel" || continue
-        link_entry "$rel"
+        link_entry ".config/$rel" "$CONFIG_DIR/$rel" "$rel"
     done
 
-    for rel in "${eww_entries[@]}"; do
+    for rel in "${wayland_bin_entries[@]}"; do
         entry_matches "$rel" || continue
-        link_entry "$rel"
+        link_entry ".local/bin/$rel" "$LOCAL_BIN_DIR/$rel" ".local/bin/$rel"
+    done
+
+    for rel in "${systemd_user_entries[@]}"; do
+        entry_matches "systemd-user/$rel" || continue
+        link_entry ".config/systemd/user/$rel" "$CONFIG_DIR/systemd/user/$rel" "systemd/user/$rel"
     done
 
     if [ "$DRY_RUN" -eq 1 ]; then

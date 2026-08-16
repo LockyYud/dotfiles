@@ -1,0 +1,15 @@
+input {
+    keyboard {
+        repeat-delay 600
+        repeat-rate 25
+    }
+
+    touchpad {
+        tap
+        drag true
+        dwt
+        natural-scroll
+    }
+
+    focus-follows-mouse max-scroll-amount="0%"
+}

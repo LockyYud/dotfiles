@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+case "${1:-region}" in
+  region) exec niri msg action screenshot ;;
+  screen) exec niri msg action screenshot-screen ;;
+  window) exec niri msg action screenshot-window ;;
+  *) echo "usage: niri-screenshot {region|screen|window}" >&2; exit 2 ;;
+esac

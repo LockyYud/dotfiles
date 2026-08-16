@@ -1,6 +1,7 @@
 # do-duy dotfiles
 
-Personal dotfiles for the bspwm/X11 desktop, symlinked into `~/.config`.
+Personal dotfiles for an Ubuntu 24.04 desktop. `main` remains the X11/bspwm
+baseline while `wayland-niri` contains the Niri migration.
 Applications read config from `~/.config` as usual; this repo is the
 source of truth that `bootstrap.sh` links into place.
 
@@ -20,12 +21,11 @@ Whole-directory symlinks:
 - `betterlockscreen`
 - `networkmanager-dmenu`
 - `neofetch`
+- `niri`, `waybar`, `swaync`, `swaylock`, `swayidle`
 
-Hybrid symlink (only listed paths are managed):
-
-- `eww` — config/source files only. Local API keys, the `AI/.venv`
-  virtual environment, runtime data, logs, and task state stay in
-  `~/.config/eww` and are never tracked.
+Individual user units under `~/.config/systemd/user` and the Niri helper
+scripts under `~/.local/bin` are linked individually. Existing snap-managed
+user units are left untouched.
 
 ## Not managed (intentionally)
 
@@ -33,8 +33,9 @@ Hybrid symlink (only listed paths are managed):
   `Antigravity`, `browseruse`, cookies, trust tokens, session/cache data.
 - Credentials: `secrets/`, `gh/hosts.yml`, `ngrok/ngrok.yml`, and all
   `eww/AI/*_api_key` / `*_database_id` files.
-- `wal` — currently empty; will likely be replaced by Matugen during the
-  Wayland migration instead of being adopted here.
+- `eww` and its AI widgets — retired during the Niri migration; local runtime
+  data is never deleted by bootstrap.
+- `wal` — intentionally not adopted.
 - `systemd/user` — the units present (`snap.*`) are managed by snapd, not
   authored by hand, so there's nothing user-owned to track. If you add a
   real user unit later, bring it into scope explicitly.
@@ -60,11 +61,11 @@ Flags:
 ```sh
 ~/dotfiles/bootstrap.sh --dry-run          # preview link/backup actions, no changes
 ~/dotfiles/bootstrap.sh --only bspwm       # link/update a single entry
-~/dotfiles/bootstrap.sh --only eww         # re-run every eww hybrid entry
-~/dotfiles/bootstrap.sh --only eww/Main    # re-run one eww child entry
+~/dotfiles/bootstrap.sh --only wayland     # link every Niri desktop component
+~/dotfiles/bootstrap.sh --only niri        # link one component
 ```
 
-`--only` must match a manifest entry exactly (or the literal `eww` group);
+`--only` must match a manifest entry exactly (or the literal `wayland` group);
 anything else exits non-zero without touching `~/.config`.
 
 ## Machine-specific settings (host profiles)
@@ -83,6 +84,21 @@ rather than referencing a hardcoded path.
 To add a new machine, copy `bspwm/hosts/DuyDM-PC.conf` to
 `bspwm/hosts/<hostname>.conf` and adjust the values — `hostname` must
 match exactly.
+
+## Niri on Ubuntu 24.04
+
+Install the pinned compositor stack separately, then link config:
+
+```sh
+./install/ubuntu-24.04-wayland.sh --check
+./install/ubuntu-24.04-wayland.sh --install
+./bootstrap.sh --only wayland
+systemctl --user enable niri-waybar niri-swaync niri-vicinae niri-idle niri-wallpaper niri-polkit-agent
+```
+
+`install/versions.env` pins Niri, Waybar, xwayland-satellite and Vicinae with
+the SHA-256 of their upstream release artifacts. Log out and select **Niri**
+from GDM. BSPWM remains available as the rollback session.
 
 ## Restoring from a backup
 

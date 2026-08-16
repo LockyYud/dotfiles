@@ -1,0 +1,27 @@
+// Main Niri entry point. Keep host-specific output names in hosts/DuyDM-PC.kdl.
+include "input.kdl"
+include "layout.kdl"
+include "binds.kdl"
+include "rules.kdl"
+include "hosts/DuyDM-PC.kdl"
+
+screenshot-path "~/Pictures/Screenshots/Screenshot from %Y-%m-%d %H-%M-%S.png"
+
+environment {
+    ELECTRON_OZONE_PLATFORM_HINT "auto"
+}
+
+xwayland-satellite {
+    path "/usr/local/bin/xwayland-satellite"
+}
+
+cursor {
+    xcursor-theme "Bibata-Modern-Classic"
+    xcursor-size 24
+    hide-when-typing
+}
+
+overview {
+    zoom 0.5
+    backdrop-color "#1e1e2e"
+}

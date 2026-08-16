@@ -1,0 +1,13 @@
+{
+  "layer": "top", "position": "top", "height": 30,
+  "modules-left": ["niri/workspaces"], "modules-center": ["niri/window"],
+  "modules-right": ["tray", "network", "bluetooth", "pulseaudio", "battery", "clock"],
+  "niri/workspaces": { "format": "{value}" },
+  "niri/window": { "max-length": 90, "separate-outputs": true },
+  "network": { "format-wifi": "  {signalStrength}%", "format-ethernet": "󰈀  {ipaddr}", "format-disconnected": "󰖪", "on-click": "nm-connection-editor" },
+  "bluetooth": { "format": "", "format-disabled": "", "on-click": "blueman-manager" },
+  "pulseaudio": { "format": "{icon} {volume}%", "format-muted": "󰖁", "format-icons": { "default": ["", "", ""] }, "on-click": "pavucontrol" },
+  "battery": { "format": "{icon} {capacity}%", "format-icons": ["󰂎", "󰁺", "󰁹", "󰂀"] },
+  "clock": { "format": "󰃭  {:%a, %d %b  %H:%M}", "on-click": "swaync-client -t -sw" },
+  "tray": { "spacing": 8 }
+}

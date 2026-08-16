@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+wallpaper="${NIRI_WALLPAPER:-$HOME/Pictures/wallpapers/natra1.jpg}"
+[ -f "$wallpaper" ] || exit 0
+exec swaybg -m fill -i "$wallpaper"

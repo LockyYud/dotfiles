@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+selection="$(niri msg windows --json | jq -r '.[] | "\(.id)\t\(.app_id // "unknown") — \(.title // "untitled")"' | vicinae dmenu --placeholder 'Switch window')"
+[ -n "$selection" ] || exit 0
+window_id="${selection%%$'\t'*}"
+niri msg action focus-window --id "$window_id"
