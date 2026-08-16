@@ -1,7 +1,8 @@
-// Keep Kitty visibly translucent consistently, including while it has keyboard focus.
+// Without this, Niri draws a solid backing rectangle for the focus ring,
+// which shows through Kitty's transparent background when it is focused.
 window-rule {
     match app-id="^kitty$"
-    opacity 0.65
+    draw-border-with-background false
 }
 
 window-rule {

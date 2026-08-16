@@ -11,5 +11,5 @@ input {
         natural-scroll
     }
 
-    focus-follows-mouse max-scroll-amount="0%"
+    focus-follows-mouse
 }
