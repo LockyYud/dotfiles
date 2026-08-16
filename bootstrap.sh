@@ -127,6 +127,7 @@ systemd_user_entries=(
     niri-idle.service
     niri-wallpaper.service
     niri-polkit-agent.service
+    niri-ibus.service
 )
 
 all_entries() {

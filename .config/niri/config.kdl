@@ -9,6 +9,9 @@ screenshot-path "~/Pictures/Screenshots/Screenshot from %Y-%m-%d %H-%M-%S.png"
 
 environment {
     ELECTRON_OZONE_PLATFORM_HINT "auto"
+    GTK_IM_MODULE "ibus"
+    QT_IM_MODULE "ibus"
+    XMODIFIERS "@im=ibus"
 }
 
 xwayland-satellite {

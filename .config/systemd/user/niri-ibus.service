@@ -1,0 +1,12 @@
+[Unit]
+Description=IBus input method daemon for Niri
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/ibus-daemon --replace --xim
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target

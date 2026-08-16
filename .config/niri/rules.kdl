@@ -5,6 +5,13 @@ window-rule {
     draw-border-with-background false
 }
 
+// libadwaita apps use rounded client-side corners; match their focus ring
+// without clipping the application's own shadows or geometry.
+window-rule {
+    match app-id="^org\\.gnome\\."
+    geometry-corner-radius 12
+}
+
 window-rule {
     match app-id="^pavucontrol$"
     open-floating true
