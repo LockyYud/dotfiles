@@ -1,0 +1,7 @@
+// Alt+Tab is intentionally limited to the current workspace.
+recent-windows {
+    binds {
+        Alt+Tab { next-window scope="workspace"; }
+        Alt+Shift+Tab { previous-window scope="workspace"; }
+    }
+}

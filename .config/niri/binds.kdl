@@ -30,7 +30,6 @@ binds {
     Mod+Shift+F { toggle-window-floating; }
     Mod+T { toggle-column-tabbed-display; }
     Mod+W { close-window; }
-    Alt+Tab { focus-window-previous; }
     Mod+BracketLeft { focus-workspace-up; }
     Mod+BracketRight { focus-workspace-down; }
 
