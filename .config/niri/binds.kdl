@@ -2,8 +2,9 @@ binds {
     Mod+Return { spawn "kitty"; }
     Mod+C { spawn "kitty" "sh" "-c" "q chat"; }
     Mod+D { spawn "~/.local/bin/vicinae" "toggle"; }
-    // Native Vicinae clipboard history; do not use the OAuth token store here.
-    Mod+Shift+C { spawn "~/.local/bin/vicinae" "cmd" "launch" "clipboard:history"; }
+    // Open the official Bitwarden desktop vault for password search and copying.
+    // Clipboard history remains available from Vicinae (Mod+D).
+    Mod+Shift+C { spawn "bitwarden"; }
     // Let Niri own the familiar shortcut and switch Fcitx5 input methods.
     Mod+Space { spawn "~/.local/bin/niri-toggle-input-method"; }
     Mod+A { spawn "niri-window-switcher"; }
