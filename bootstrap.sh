@@ -116,6 +116,7 @@ wayland_bin_entries=(
     niri-wallpaper
     niri-screenshot
     niri-idle
+    niri-toggle-input-method
 )
 
 # User-authored units are linked one by one so snap-managed units already in
