@@ -1,13 +1,20 @@
 {
   "layer": "top", "position": "top", "height": 30,
-  "modules-left": ["niri/workspaces"], "modules-center": ["niri/window"],
-  "modules-right": ["tray", "network", "bluetooth", "pulseaudio", "battery", "clock"],
+  "margin-top": 3, "margin-left": 3, "margin-right": 3,
+  "modules-left": ["niri/workspaces", "custom/launcher"],
+  "modules-center": ["niri/window"],
+  "modules-right": ["cpu", "memory", "clock", "battery", "bluetooth", "network", "pulseaudio", "tray", "custom/power"],
+
   "niri/workspaces": { "format": "{value}" },
   "niri/window": { "max-length": 90, "separate-outputs": true },
-  "network": { "format-wifi": "  {signalStrength}%", "format-ethernet": "󰈀  {ipaddr}", "format-disconnected": "󰖪", "on-click": "nm-connection-editor" },
+  "custom/launcher": { "format": "󰘳", "tooltip": false, "on-click": "~/.local/bin/vicinae toggle" },
+  "cpu": { "interval": 3, "format": "  {usage}%", "tooltip": false },
+  "memory": { "interval": 3, "format": "  {percentage}%", "tooltip": false },
+  "network": { "format-wifi": "󰤨  {signalStrength}%", "format-ethernet": "󰈀  {ipaddr}", "format-disconnected": "󰤭", "tooltip-format-wifi": "{essid}\n{ipaddr}", "on-click": "nm-connection-editor" },
   "bluetooth": { "format": "", "format-disabled": "", "on-click": "blueman-manager" },
-  "pulseaudio": { "format": "{icon} {volume}%", "format-muted": "󰖁", "format-icons": { "default": ["", "", ""] }, "on-click": "pavucontrol" },
-  "battery": { "format": "{icon} {capacity}%", "format-icons": ["󰂎", "󰁺", "󰁹", "󰂀"] },
-  "clock": { "format": "󰃭  {:%a, %d %b  %H:%M}", "on-click": "swaync-client -t -sw" },
-  "tray": { "spacing": 8 }
+  "pulseaudio": { "format": "{icon}  {volume}%", "format-muted": "󰖁", "format-icons": { "default": ["", "", ""] }, "on-click": "pavucontrol" },
+  "battery": { "format": "{icon}  {capacity}%", "format-icons": ["󰂎", "󰁺", "󰁹", "󰂀"] },
+  "clock": { "format": "󰃭  {:%d/%m, %H:%M}", "tooltip-format": "{:%A, %d %B %Y}", "on-click": "swaync-client -t -sw" },
+  "tray": { "spacing": 8 },
+  "custom/power": { "format": "", "tooltip": false, "on-click": "niri-power-menu" }
 }
