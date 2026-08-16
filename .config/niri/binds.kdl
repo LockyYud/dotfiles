@@ -29,8 +29,8 @@ binds {
     Mod+T { toggle-column-tabbed-display; }
     Mod+W { close-window; }
     Alt+Tab { focus-window-previous; }
-    Mod+BracketLeft { focus-workspace-previous; }
-    Mod+BracketRight { focus-workspace-next; }
+    Mod+BracketLeft { focus-workspace-up; }
+    Mod+BracketRight { focus-workspace-down; }
 
     Mod+1 { focus-workspace "1"; }
     Mod+2 { focus-workspace "2"; }

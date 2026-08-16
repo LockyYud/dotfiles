@@ -1,0 +1,15 @@
+#!/usr/bin/env sh
+set -eu
+
+# The installer stores the AppImage in ~/.local/lib. Run it in extract mode so
+# Vicinae also works on systems where the FUSE kernel device is unavailable.
+appimage_dir="$HOME/.local/lib/vicinae"
+appimage="$(find "$appimage_dir" -maxdepth 1 -type f -name 'Vicinae-*.AppImage' -print | sort | tail -n 1)"
+
+if [ -z "$appimage" ]; then
+    echo "Vicinae AppImage is missing; run install/ubuntu-24.04-wayland.sh --install." >&2
+    exit 1
+fi
+
+export APPIMAGE_EXTRACT_AND_RUN=1
+exec "$appimage" "$@"

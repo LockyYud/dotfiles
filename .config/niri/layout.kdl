@@ -5,10 +5,19 @@ layout {
         inactive-color "#45475a"
     }
 
-    border { off }
+    border {
+        off
+    }
     gaps 10
-    default-column-width { proportion 0.52; }
-    preset-column-widths { proportion 0.33; proportion 0.5; proportion 0.67; proportion 1.0; }
+    default-column-width {
+        proportion 0.52
+    }
+    preset-column-widths {
+        proportion 0.33
+        proportion 0.5
+        proportion 0.67
+        proportion 1.0
+    }
     default-column-display "normal"
     center-focused-column "never"
 }

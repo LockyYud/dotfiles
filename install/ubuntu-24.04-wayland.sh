@@ -26,7 +26,7 @@ check_command() { command -v "$1" >/dev/null 2>&1; }
 apt_packages=(
   build-essential clang curl git pkg-config meson ninja-build cmake
   libudev-dev libgbm-dev libxkbcommon-dev libegl1-mesa-dev libwayland-dev
-  libinput-dev libdbus-1-dev libsystemd-dev libseat-dev libpipewire-0.3-dev
+  libinput-dev libxkbregistry-dev libdbus-1-dev libsystemd-dev libseat-dev libpipewire-0.3-dev
   libpango1.0-dev libdisplay-info-dev libxcb1-dev libxcb-cursor-dev xwayland
   libcairo2-dev libspdlog-dev libfmt-dev libgtkmm-3.0-dev libjsoncpp-dev
   libnl-3-dev libnl-genl-3-dev libmpdclient-dev libpulse-dev libssl-dev
@@ -41,8 +41,8 @@ check() {
   check_command cargo || echo 'missing: cargo (install rustup stable before --install)'
   check_command niri && niri --version || true
   check_command waybar && waybar --version || true
-  check_command xwayland-satellite && xwayland-satellite --version || true
-  [ -x /usr/local/share/wayland-sessions/niri.desktop ] && echo 'Niri GDM session: installed' || echo 'Niri GDM session: missing'
+  check_command xwayland-satellite && echo 'xwayland-satellite: installed' || true
+  [ -f /usr/local/share/wayland-sessions/niri.desktop ] && echo 'Niri GDM session: installed' || echo 'Niri GDM session: missing'
 }
 
 download_verify() {
@@ -62,9 +62,8 @@ install_all() {
   sudo apt-get update
   sudo apt-get install -y "${apt_packages[@]}"
 
-  local build_dir
   build_dir="$(mktemp -d)"
-  trap 'rm -rf "$build_dir"' EXIT
+  trap 'rm -rf "${build_dir:-}"' EXIT
 
   download_verify "https://github.com/niri-wm/niri/archive/refs/tags/${NIRI_VERSION}.tar.gz" "$build_dir/niri.tar.gz" "$NIRI_SHA256"
   tar -C "$build_dir" -xzf "$build_dir/niri.tar.gz"
@@ -83,14 +82,13 @@ install_all() {
 
   download_verify "https://github.com/Alexays/Waybar/archive/refs/tags/${WAYBAR_VERSION}.tar.gz" "$build_dir/waybar.tar.gz" "$WAYBAR_SHA256"
   tar -C "$build_dir" -xzf "$build_dir/waybar.tar.gz"
-  meson setup "$build_dir/waybar-build" "$build_dir/Waybar-${WAYBAR_VERSION}" -Dniri=enabled
+  meson setup "$build_dir/waybar-build" "$build_dir/Waybar-${WAYBAR_VERSION}" -Dniri=true
   meson compile -C "$build_dir/waybar-build"
   sudo meson install -C "$build_dir/waybar-build"
 
-  mkdir -p "$HOME/.local/lib/vicinae" "$HOME/.local/bin"
+  mkdir -p "$HOME/.local/lib/vicinae"
   download_verify "https://github.com/vicinaehq/vicinae/releases/download/${VICINAE_VERSION}/Vicinae-x86_64.AppImage" "$HOME/.local/lib/vicinae/Vicinae-${VICINAE_VERSION}.AppImage" "$VICINAE_SHA256"
   chmod 0755 "$HOME/.local/lib/vicinae/Vicinae-${VICINAE_VERSION}.AppImage"
-  ln -sfn "$HOME/.local/lib/vicinae/Vicinae-${VICINAE_VERSION}.AppImage" "$HOME/.local/bin/vicinae"
 
   sudo systemctl daemon-reload
   systemctl --user daemon-reload

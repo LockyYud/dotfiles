@@ -110,6 +110,7 @@ core_entries=(
 )
 
 wayland_bin_entries=(
+    vicinae
     niri-window-switcher
     niri-power-menu
     niri-wallpaper
@@ -141,7 +142,7 @@ entry_matches() {
     [ "$rel" = "$ONLY" ] && return 0
     if [ "$ONLY" = "wayland" ]; then
         case "$rel" in
-            niri|waybar|swaync|swaylock|swayidle|systemd-user/*|niri-*) return 0 ;;
+            niri|waybar|swaync|swaylock|swayidle|vicinae|systemd-user/*|niri-*) return 0 ;;
         esac
     fi
     return 1
