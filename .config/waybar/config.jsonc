@@ -3,7 +3,7 @@
   "margin-top": 7, "margin-left": 8, "margin-right": 8,
   "modules-left": ["niri/workspaces"],
   "modules-center": ["niri/window"],
-  "modules-right": ["cpu", "memory", "clock", "battery", "bluetooth", "network", "pulseaudio", "tray", "custom/power"],
+  "modules-right": ["cpu", "memory", "clock", "battery", "bluetooth", "network", "pulseaudio", "custom/power"],
 
   "niri/workspaces": { "format": "{value}" },
   "niri/window": { "max-length": 70, "separate-outputs": true },
@@ -14,6 +14,5 @@
   "pulseaudio": { "format": "{icon}  {volume}%", "format-muted": "󰖁", "format-icons": { "default": ["", "", ""] }, "on-click": "pavucontrol" },
   "battery": { "format": "{icon}  {capacity}%", "format-icons": ["󰂎", "󰁺", "󰁹", "󰂀"] },
   "clock": { "format": "󰃭  {:%d/%m, %H:%M}", "tooltip-format": "{:%A, %d %B %Y}", "on-click": "swaync-client -t -sw" },
-  "tray": { "spacing": 8 },
   "custom/power": { "format": "", "tooltip": false, "on-click": "niri-power-menu" }
 }
