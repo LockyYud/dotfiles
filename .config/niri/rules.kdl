@@ -1,3 +1,9 @@
+// Keep Kitty translucent consistently, including while it has keyboard focus.
+window-rule {
+    match app-id="^kitty$"
+    opacity 0.90
+}
+
 window-rule {
     match app-id="^pavucontrol$"
     open-floating true
