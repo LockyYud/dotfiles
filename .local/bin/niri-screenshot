@@ -1,9 +1,48 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+screenshots_dir="${XDG_PICTURES_DIR:-$HOME/Pictures}/Screenshots"
+
+notify() {
+    command -v notify-send >/dev/null 2>&1 || return 0
+    notify-send "Screenshot" "$1" >/dev/null 2>&1 || true
+}
+
+save_path() {
+    mkdir -p "$screenshots_dir"
+    printf '%s/Screenshot from %s.png\n' "$screenshots_dir" "$(date '+%Y-%m-%d %H-%M-%S')"
+}
+
+capture_region() {
+    slurp
+}
+
 case "${1:-region}" in
-  region) exec niri msg action screenshot ;;
-  screen) exec niri msg action screenshot-screen ;;
-  window) exec niri msg action screenshot-window ;;
-  *) echo "usage: niri-screenshot {region|screen|window}" >&2; exit 2 ;;
+    region)
+        geometry="$(capture_region)" || exit 0
+        path="$(save_path)"
+        grim -g "$geometry" "$path"
+        notify "Region saved to Pictures/Screenshots"
+        ;;
+    region-copy)
+        geometry="$(capture_region)" || exit 0
+        grim -g "$geometry" - | wl-copy --type image/png
+        notify "Region copied to clipboard"
+        ;;
+    screen)
+        path="$(save_path)"
+        grim "$path"
+        notify "Screen saved to Pictures/Screenshots"
+        ;;
+    screen-copy)
+        grim - | wl-copy --type image/png
+        notify "Screen copied to clipboard"
+        ;;
+    window)
+        exec niri msg action screenshot-window
+        ;;
+    *)
+        echo "usage: niri-screenshot {region|region-copy|screen|screen-copy|window}" >&2
+        exit 2
+        ;;
 esac
