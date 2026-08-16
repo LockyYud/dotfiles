@@ -30,7 +30,7 @@ apt_packages=(
   libpango1.0-dev libdisplay-info-dev libxcb1-dev libxcb-cursor-dev xwayland
   libcairo2-dev libspdlog-dev libfmt-dev libgtkmm-3.0-dev libjsoncpp-dev
   libnl-3-dev libnl-genl-3-dev libmpdclient-dev libpulse-dev libssl-dev
-  libgobject-introspection-dev libgirepository1.0-dev
+  libgirepository1.0-dev
   sway-notification-center swayidle swaylock swaybg grim slurp wl-clipboard
   playerctl brightnessctl network-manager-gnome blueman policykit-1-gnome jq
 )
