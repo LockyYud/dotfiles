@@ -2,9 +2,9 @@ binds {
     Mod+Return { spawn "kitty"; }
     Mod+C { spawn "kitty" "sh" "-c" "q chat"; }
     Mod+D { spawn "~/.local/bin/vicinae" "toggle"; }
-    // Open the official Bitwarden desktop vault for password search and copying.
+    // Search Bitwarden and copy the selected credential through Vicinae.
     // Clipboard history remains available from Vicinae (Mod+D).
-    Mod+Shift+C { spawn "bitwarden"; }
+    Mod+Shift+C { spawn "~/.local/bin/vicinae" "cmd" "launch" "@bl4zee1g/store.vicinae.bitwarden:browse-vault"; }
     // Let Niri own the familiar shortcut and switch Fcitx5 input methods.
     Mod+Space { spawn "~/.local/bin/niri-toggle-input-method"; }
     Mod+A { spawn "niri-window-switcher"; }
