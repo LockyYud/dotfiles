@@ -9,9 +9,12 @@ screenshot-path "~/Pictures/Screenshots/Screenshot from %Y-%m-%d %H-%M-%S.png"
 
 environment {
     ELECTRON_OZONE_PLATFORM_HINT "auto"
-    GTK_IM_MODULE "ibus"
-    QT_IM_MODULE "ibus"
-    XMODIFIERS "@im=ibus"
+    GTK_IM_MODULE "fcitx"
+    QT_IM_MODULE "fcitx"
+    XMODIFIERS "@im=fcitx"
+    SDL_IM_MODULE "fcitx"
+    // Kitty uses GLFW's IBus protocol frontend, which Fcitx5 provides too.
+    GLFW_IM_MODULE "ibus"
 }
 
 xwayland-satellite {

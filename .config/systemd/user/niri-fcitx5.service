@@ -1,10 +1,10 @@
 [Unit]
-Description=IBus input method daemon for Niri
+Description=Fcitx5 input method daemon for Niri
 PartOf=graphical-session.target
 After=graphical-session.target
 
 [Service]
-ExecStart=/usr/bin/ibus-daemon --replace --xim
+ExecStart=/usr/bin/fcitx5 --replace
 Restart=on-failure
 RestartSec=2
 

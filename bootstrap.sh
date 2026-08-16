@@ -102,6 +102,7 @@ core_entries=(
     betterlockscreen
     networkmanager-dmenu
     neofetch
+    fcitx5
     niri
     waybar
     swaync
@@ -128,7 +129,7 @@ systemd_user_entries=(
     niri-idle.service
     niri-wallpaper.service
     niri-polkit-agent.service
-    niri-ibus.service
+    niri-fcitx5.service
 )
 
 all_entries() {

@@ -1,18 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-current="$(ibus engine 2>/dev/null || true)"
+current="$(fcitx5-remote -n 2>/dev/null || true)"
 
 case "$current" in
-    Bamboo)
-        # IBus can return 1 while still completing this switch; do not let that
-        # make a compositor key binding appear to fail.
-        ibus engine BambooUs || true
+    unikey)
+        fcitx5-remote -s keyboard-us
         message="English"
         ;;
     *)
-        ibus engine Bamboo || true
-        message="Vietnamese (Bamboo)"
+        fcitx5-remote -s unikey
+        message="Vietnamese (Unikey)"
         ;;
 esac
 

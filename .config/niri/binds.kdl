@@ -2,8 +2,7 @@ binds {
     Mod+Return { spawn "kitty"; }
     Mod+C { spawn "kitty" "sh" "-c" "q chat"; }
     Mod+D { spawn "~/.local/bin/vicinae" "toggle"; }
-    // IBus global hotkeys do not reliably receive keys on all Wayland clients.
-    // Let Niri own the familiar shortcut and switch the two Bamboo engines.
+    // Let Niri own the familiar shortcut and switch Fcitx5 input methods.
     Mod+Space { spawn "~/.local/bin/niri-toggle-input-method"; }
     Mod+A { spawn "niri-window-switcher"; }
     Mod+Shift+X { spawn "swaync-client" "-t" "-sw"; }
