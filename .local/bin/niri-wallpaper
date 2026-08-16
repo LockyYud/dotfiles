@@ -1,6 +1,26 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-wallpaper="${NIRI_WALLPAPER:-$HOME/Pictures/wallpapers/natra1.jpg}"
-[ -f "$wallpaper" ] || exit 0
-exec swaybg -m fill -i "$wallpaper"
+profile="${XDG_CONFIG_HOME:-$HOME/.config}/niri/hosts/$(hostname).wallpaper.conf"
+wallpapers=()
+
+if [ -r "$profile" ]; then
+    # Host profiles keep monitor names and personal wallpaper paths out of code.
+    # shellcheck disable=SC1090
+    source "$profile"
+fi
+
+if [ "${#wallpapers[@]}" -eq 0 ]; then
+    wallpapers=("*|${NIRI_WALLPAPER:-$HOME/Pictures/wallpapers/natra1.jpg}")
+fi
+
+args=()
+for entry in "${wallpapers[@]}"; do
+    output="${entry%%|*}"
+    wallpaper="${entry#*|}"
+    [ -f "$wallpaper" ] || continue
+    args+=( -o "$output" -i "$wallpaper" -m fill )
+done
+
+[ "${#args[@]}" -gt 0 ] || exit 0
+exec swaybg "${args[@]}"
