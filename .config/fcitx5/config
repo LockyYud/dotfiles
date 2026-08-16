@@ -1,0 +1,13 @@
+[Hotkey]
+# Niri owns Super+Space. Do not let Fcitx intercept any modifier-only key.
+EnumerateWithTriggerKeys=False
+ModifierOnlyKeyTimeout=0
+
+# Fcitx5 defaults this list to Shift_L, which makes a lone left Shift
+# temporarily toggle the input method. An empty list deliberately disables it.
+[Hotkey/AltTriggerKeys]
+
+# Keep input-method switching solely in Niri's Mod+Space binding.
+[Hotkey/EnumerateGroupForwardKeys]
+
+[Hotkey/EnumerateGroupBackwardKeys]
