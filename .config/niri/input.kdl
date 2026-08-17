@@ -11,5 +11,7 @@ input {
         natural-scroll
     }
 
-    focus-follows-mouse
+    // Do not focus a hidden scrolling-layout column just because the pointer
+    // passes over its hitbox on the way to another monitor.
+    focus-follows-mouse max-scroll-amount="0%"
 }
