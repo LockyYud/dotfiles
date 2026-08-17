@@ -49,18 +49,18 @@ window#waybar.eDP-1 #window { border-color: rgba(245, 169, 127, 0.50); }
 window#waybar.eDP-1 #clock { color: #f5a97f; }
 window#waybar.eDP-1 #custom-power { color: #ed8796; }
 
-window#waybar.DP-1-8 #workspaces { border-color: rgba(138, 173, 244, 0.70); }
-window#waybar.DP-1-8 #workspaces button.active { background: #8aadf4; }
-window#waybar.DP-1-8 #window { border-color: rgba(145, 215, 227, 0.55); }
-window#waybar.DP-1-8 #clock { color: #91d7e3; }
-window#waybar.DP-1-8 #network { color: #8aadf4; }
-window#waybar.DP-1-8 #bluetooth { color: #b7bdf8; }
-window#waybar.DP-1-8 #custom-power { color: #ed8796; }
+window#waybar.DP-4 #workspaces { border-color: rgba(138, 173, 244, 0.70); }
+window#waybar.DP-4 #workspaces button.active { background: #8aadf4; }
+window#waybar.DP-4 #window { border-color: rgba(145, 215, 227, 0.55); }
+window#waybar.DP-4 #clock { color: #91d7e3; }
+window#waybar.DP-4 #network { color: #8aadf4; }
+window#waybar.DP-4 #bluetooth { color: #b7bdf8; }
+window#waybar.DP-4 #custom-power { color: #ed8796; }
 
-window#waybar.DP-1-9 #workspaces { border-color: rgba(238, 153, 160, 0.70); }
-window#waybar.DP-1-9 #workspaces button.active { background: #ee99a0; }
-window#waybar.DP-1-9 #window { border-color: rgba(245, 169, 127, 0.55); }
-window#waybar.DP-1-9 #clock { color: #f5a97f; }
-window#waybar.DP-1-9 #network { color: #eed49f; }
-window#waybar.DP-1-9 #pulseaudio { color: #f5a97f; }
-window#waybar.DP-1-9 #custom-power { color: #ed8796; }
+window#waybar.DP-3 #workspaces { border-color: rgba(238, 153, 160, 0.70); }
+window#waybar.DP-3 #workspaces button.active { background: #ee99a0; }
+window#waybar.DP-3 #window { border-color: rgba(245, 169, 127, 0.55); }
+window#waybar.DP-3 #clock { color: #f5a97f; }
+window#waybar.DP-3 #network { color: #eed49f; }
+window#waybar.DP-3 #pulseaudio { color: #f5a97f; }
+window#waybar.DP-3 #custom-power { color: #ed8796; }
