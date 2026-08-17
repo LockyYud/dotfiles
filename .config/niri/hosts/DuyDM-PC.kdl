@@ -1,12 +1,15 @@
 // Verify identifiers with `niri msg outputs` on first Niri login.
 output "eDP-1" {
     position x=0 y=0
+    scale 1
 }
 output "DP-3" {
-    position x=1536 y=0
+    position x=1920 y=0
+    scale 0.75
 }
 output "DP-4" {
-    position x=3456 y=0
+    position x=4480 y=0
+    scale 0.75
 }
 
 workspace "1" {
