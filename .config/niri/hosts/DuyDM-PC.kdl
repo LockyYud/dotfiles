@@ -5,11 +5,9 @@ output "eDP-1" {
 }
 output "DP-3" {
     position x=1920 y=0
-    scale 0.75
 }
 output "DP-4" {
-    position x=4480 y=0
-    scale 0.75
+    position x=3840 y=0
 }
 
 workspace "1" {

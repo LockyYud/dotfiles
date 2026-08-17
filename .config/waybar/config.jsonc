@@ -6,13 +6,7 @@
   "modules-center": ["niri/window"],
   "modules-right": ["cpu", "memory", "clock", "battery", "bluetooth", "network", "pulseaudio", "custom/power"],
 
-  "niri/workspaces": {
-    "format": "{icon}",
-    "format-icons": {
-      "1": "1", "2": "2", "3": "3", "4": "4", "5": "5", "6": "6",
-      "default": ""
-    }
-  },
+  "niri/workspaces": { "format": "{value}", "display-condition": "keep-named" },
   "niri/window": { "max-length": 70, "separate-outputs": true },
   "cpu": { "interval": 3, "format": "  {usage}%", "tooltip": false },
   "memory": { "interval": 3, "format": "  {percentage}%", "tooltip": false },

@@ -24,7 +24,7 @@ xwayland-satellite {
 
 cursor {
     xcursor-theme "Bibata-Modern-Classic"
-    xcursor-size 24
+    xcursor-size 16
     hide-when-typing
 }
 
