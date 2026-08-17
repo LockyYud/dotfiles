@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-choice="$(printf '%s\n' Lock Suspend Logout Reboot Shutdown | vicinae dmenu --placeholder 'Power')"
+choice="$(printf '%s\n' Lock Suspend Logout Reboot Shutdown | "$HOME/.local/bin/vicinae" dmenu --placeholder 'Power')"
 case "$choice" in
   Lock) pgrep -x swaylock >/dev/null || swaylock -f ;;
   Suspend) loginctl suspend ;;
   Logout|Reboot|Shutdown)
-    confirm="$(printf '%s\n' Cancel Confirm | vicinae dmenu --placeholder "Confirm $choice")"
+    confirm="$(printf '%s\n' Cancel Confirm | "$HOME/.local/bin/vicinae" dmenu --placeholder "Confirm $choice")"
     [ "$confirm" = Confirm ] || exit 0
     case "$choice" in
       Logout) niri msg action quit ;;

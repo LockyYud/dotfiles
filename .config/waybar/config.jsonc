@@ -4,16 +4,21 @@
   "margin-top": 7, "margin-left": 8, "margin-right": 8,
   "modules-left": ["niri/workspaces"],
   "modules-center": ["niri/window"],
-  "modules-right": ["cpu", "memory", "clock", "battery", "bluetooth", "network", "pulseaudio", "custom/power"],
+  "modules-right": ["cpu", "memory", "clock", "battery", "custom/bluetooth", "network", "pulseaudio", "custom/power"],
 
   "niri/workspaces": { "format": "{value}", "display-condition": "keep-named" },
   "niri/window": { "max-length": 70, "separate-outputs": true },
   "cpu": { "interval": 3, "format": "  {usage}%", "tooltip": false },
   "memory": { "interval": 3, "format": "  {percentage}%", "tooltip": false },
   "network": { "format-wifi": "󰤨  {signalStrength}%", "format-ethernet": "󰈀  {ipaddr}", "format-disconnected": "󰤭", "tooltip-format-wifi": "{essid}\n{ipaddr}", "on-click": "nm-connection-editor" },
-  "bluetooth": { "format": "", "format-disabled": "", "on-click": "blueman-manager" },
+  "custom/bluetooth": {
+    "exec": "$HOME/.config/waybar/scripts/bluetooth-status",
+    "return-type": "json",
+    "interval": 15,
+    "on-click": "blueman-manager"
+  },
   "pulseaudio": { "format": "{icon}  {volume}%", "format-muted": "󰖁", "format-icons": { "default": ["", "", ""] }, "on-click": "pavucontrol" },
   "battery": { "format": "{icon}  {capacity}%", "format-icons": ["󰂎", "󰁺", "󰁹", "󰂀"] },
-  "clock": { "format": "󰃭  {:%d/%m, %H:%M}", "tooltip-format": "{:%A, %d %B %Y}", "on-click": "swaync-client -t -sw" },
-  "custom/power": { "format": "", "tooltip": false, "on-click": "niri-power-menu" }
+  "clock": { "format": "󰃭  {:%d/%m, %H:%M}", "tooltip-format": "{:%A, %d %B %Y}", "on-click": "zenity --calendar --title='Calendar' --date-format='%d/%m/%Y'" },
+  "custom/power": { "format": "", "tooltip": true, "tooltip-format": "Power menu", "on-click": "$HOME/.local/bin/niri-power-menu" }
 }

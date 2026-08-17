@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+device_line="$(bluetoothctl devices Connected 2>/dev/null | head -n 1 || true)"
+
+if [[ -z "$device_line" ]]; then
+    jq -cn --arg text '' --arg tooltip 'Bluetooth: disconnected' --arg class disconnected \
+        '{text: $text, tooltip: $tooltip, class: $class}'
+    exit 0
+fi
+
+mac="${device_line#Device }"
+mac="${mac%% *}"
+name="${device_line#Device "$mac" }"
+info="$(bluetoothctl info "$mac" 2>/dev/null || true)"
+battery="$(sed -nE 's/^[[:space:]]*Battery Percentage:.*\(([0-9]+)\).*/\1/p' <<<"$info" | head -n 1)"
+
+if [[ -n "$battery" ]]; then
+    text="  ${battery}%"
+    tooltip="${name}\nConnected • ${battery}% battery"
+else
+    text=''
+    tooltip="${name}\nConnected"
+fi
+
+jq -cn --arg text "$text" --arg tooltip "$tooltip" --arg class connected \
+    '{text: $text, tooltip: $tooltip, class: $class}'
