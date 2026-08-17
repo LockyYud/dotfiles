@@ -6,7 +6,7 @@
   "modules-center": ["niri/window"],
   "modules-right": ["cpu", "memory", "clock", "backlight", "battery", "custom/bluetooth", "network", "pulseaudio", "custom/power"],
 
-  "niri/workspaces": { "format": "{value}", "display-condition": "keep-named" },
+  "niri/workspaces": { "format": "{value}", "display-condition": "only-populated" },
   "niri/window": { "max-length": 70, "separate-outputs": true },
   "cpu": { "interval": 3, "format": "  {usage}%", "tooltip": false },
   "memory": { "interval": 3, "format": "  {used:0.1f}GiB", "tooltip-format": "RAM: {used:0.1f}GiB / {total:0.1f}GiB" },

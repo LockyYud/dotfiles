@@ -10,21 +10,6 @@ output "DP-4" {
     position x=3840 y=0
 }
 
-workspace "1" {
-    open-on-output "eDP-1"
-}
-workspace "2" {
-    open-on-output "eDP-1"
-}
-workspace "3" {
-    open-on-output "DP-3"
-}
-workspace "4" {
-    open-on-output "DP-3"
-}
-workspace "5" {
-    open-on-output "DP-4"
-}
-workspace "6" {
-    open-on-output "DP-4"
-}
+// Workspaces are deliberately left dynamic. Niri keeps them local to an
+// output and removes vacant ones in the middle, so disconnecting monitors
+// compacts the remaining workspaces instead of leaving 1, 3, 5 gaps.
