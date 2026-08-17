@@ -23,7 +23,9 @@ xwayland-satellite {
 }
 
 cursor {
-    xcursor-theme "Bibata-Modern-Classic"
+    // Bibata was referenced but not installed, causing Niri to fall back to
+    // a large default cursor. Yaru is shipped with Ubuntu and has every shape.
+    xcursor-theme "Yaru"
     // A global size is the only option Niri exposes. 12px keeps the pointer
     // comfortable on the lower-DPI external panels without scaling outputs.
     xcursor-size 12
