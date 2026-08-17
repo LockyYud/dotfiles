@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+profile="${XDG_CONFIG_HOME:-$HOME/.config}/niri/hosts/$(hostname).wallpaper.conf"
+config="${XDG_CONFIG_HOME:-$HOME/.config}/swaylock/config"
+wallpapers=()
+
+if [ -r "$profile" ]; then
+    # shellcheck disable=SC1090
+    source "$profile"
+fi
+
+if [ "${#wallpapers[@]}" -eq 0 ]; then
+    wallpapers=("*|${NIRI_WALLPAPER:-$HOME/Pictures/wallpapers/natra1.jpg}")
+fi
+
+resolve_output() {
+    local selector="$1"
+    niri msg -j outputs 2>/dev/null | jq -r --arg selector "$selector" '
+        to_entries[].value
+        | select(
+            $selector == "*"
+            or .name == $selector
+            or ([.make, .model, (.serial // "")] | join(" ") == $selector)
+        )
+        | .name
+    '
+}
+
+args=()
+for entry in "${wallpapers[@]}"; do
+    selector="${entry%%|*}"
+    wallpaper="${entry#*|}"
+    [ -f "$wallpaper" ] || continue
+    while IFS= read -r output; do
+        [ -n "$output" ] || continue
+        args+=(--image "${output}:${wallpaper}" --scaling fill)
+    done < <(resolve_output "$selector")
+done
+
+[ "${#args[@]}" -gt 0 ] || exit 1
+
+if [ "${1:-}" = "--dry-run" ]; then
+    printf 'swaylock -f -C %q' "$config"
+    printf ' %q' "${args[@]}"
+    printf '\n'
+    exit 0
+fi
+
+exec swaylock -f -C "$config" "${args[@]}"

@@ -114,6 +114,7 @@ wayland_bin_entries=(
     vicinae
     niri-window-switcher
     niri-power-menu
+    niri-lock
     niri-wallpaper
     niri-display-watch
     niri-screenshot

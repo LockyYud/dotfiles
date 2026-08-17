@@ -11,12 +11,14 @@ binds {
     Mod+Shift+X { spawn "swaync-client" "-t" "-sw"; }
     Mod+Shift+Z { spawn "nm-connection-editor"; }
     Mod+Shift+B { spawn "blueman-manager"; }
+    Mod+Alt+Z { spawn "niri-power-menu"; }
     Mod+Shift+G { spawn "niri-power-menu"; }
 
     Mod+H { focus-column-left; }
     Mod+J { focus-window-down; }
     Mod+K { focus-window-up; }
-    Mod+L { focus-column-right; }
+    Mod+L { spawn "niri-lock"; }
+    Mod+Right { focus-column-right; }
     Mod+Shift+H { move-column-left; }
     Mod+Shift+J { move-window-down; }
     Mod+Shift+K { move-window-up; }

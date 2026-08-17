@@ -3,7 +3,7 @@ set -euo pipefail
 
 choice="$(printf '%s\n' Lock Suspend Logout Reboot Shutdown | "$HOME/.local/bin/vicinae" dmenu --placeholder 'Power')"
 case "$choice" in
-  Lock) pgrep -x swaylock >/dev/null || swaylock -f ;;
+  Lock) pgrep -x swaylock >/dev/null || niri-lock ;;
   Suspend) loginctl suspend ;;
   Logout|Reboot|Shutdown)
     confirm="$(printf '%s\n' Cancel Confirm | "$HOME/.local/bin/vicinae" dmenu --placeholder "Confirm $choice")"
