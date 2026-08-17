@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Connectors assigned through a dock are not stable (DP-3 can become DP-6).
+# Refresh the two components that need concrete connector names whenever the
+# set of physical outputs changes. Keep only stable identity fields in the
+# signature so regular layout updates do not cause needless restarts.
+last_state=""
+
+while true; do
+    state="$(niri msg -j outputs 2>/dev/null | jq -cS '
+        to_entries
+        | map(.value | {name, make, model, serial})
+        | sort_by(.name)
+    ' 2>/dev/null || true)"
+
+    if [ -n "$state" ] && [ "$state" != "$last_state" ]; then
+        systemctl --user restart niri-wallpaper.service
+        systemctl --user restart niri-waybar.service
+        last_state="$state"
+    fi
+
+    sleep 2
+done

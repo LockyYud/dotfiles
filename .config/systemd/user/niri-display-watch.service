@@ -1,0 +1,12 @@
+[Unit]
+Description=Refresh Niri desktop components after display hot-plug
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+ExecStart=%h/.local/bin/niri-display-watch
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target

@@ -16,9 +16,18 @@ fi
 
 args=()
 for entry in "${wallpapers[@]}"; do
-    output="${entry%%|*}"
+    selector="${entry%%|*}"
     wallpaper="${entry#*|}"
     [ -f "$wallpaper" ] || continue
+    output="$(niri msg -j outputs 2>/dev/null | jq -r --arg selector "$selector" '
+        to_entries[].value
+        | select(
+            .name == $selector
+            or ([.make, .model, (.serial // "")] | join(" ") == $selector)
+        )
+        | .name
+    ' | head -n 1)"
+    [ -n "$output" ] || continue
     args+=( -o "$output" -i "$wallpaper" -m fill )
 done
 

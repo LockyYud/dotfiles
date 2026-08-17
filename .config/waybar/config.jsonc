@@ -1,6 +1,5 @@
 {
   "layer": "top", "position": "top", "height": 30,
-  "output": ["eDP-1", "DP-4", "DP-3"],
   "margin-top": 7, "margin-left": 8, "margin-right": 8,
   "modules-left": ["niri/workspaces"],
   "modules-center": ["niri/window"],

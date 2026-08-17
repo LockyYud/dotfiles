@@ -115,6 +115,7 @@ wayland_bin_entries=(
     niri-window-switcher
     niri-power-menu
     niri-wallpaper
+    niri-display-watch
     niri-screenshot
     niri-idle
     niri-toggle-input-method
@@ -128,6 +129,7 @@ systemd_user_entries=(
     niri-vicinae.service
     niri-idle.service
     niri-wallpaper.service
+    niri-display-watch.service
     niri-polkit-agent.service
     niri-fcitx5.service
 )

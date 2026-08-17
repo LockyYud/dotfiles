@@ -3,10 +3,12 @@ output "eDP-1" {
     position x=0 y=0
     scale 1
 }
-output "DP-3" {
+// Connector numbers change when the dock is hot-plugged. Match external
+// displays by their stable Niri output names instead.
+output "LG Electronics MP59G 0x00039D20" {
     position x=1920 y=0
 }
-output "DP-4" {
+output "LG Electronics MP59G 0x00039DC2" {
     position x=3840 y=0
 }
 
