@@ -17,11 +17,13 @@ tooltip { background: #1e1e2e; border: 1px solid #45475a; border-radius: 8px; }
  * index 3 here, while named workspaces retain their normal buttons. */
 #workspaces button.empty#niri-workspace-3 {
   border: 0;
-  font-size: 0;
   margin: 0;
   min-width: 0;
   padding: 0;
 }
+/* Waybar assigns its global font size directly to the nested label, so it
+ * must be reset here rather than only on the button above. */
+#workspaces button.empty#niri-workspace-3 label { font-size: 0; }
 
 #window {
   background: rgba(30, 30, 46, 0.90);

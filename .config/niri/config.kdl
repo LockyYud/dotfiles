@@ -24,7 +24,9 @@ xwayland-satellite {
 
 cursor {
     xcursor-theme "Bibata-Modern-Classic"
-    xcursor-size 16
+    // A global size is the only option Niri exposes. 12px keeps the pointer
+    // comfortable on the lower-DPI external panels without scaling outputs.
+    xcursor-size 12
     hide-when-typing
 }
 
