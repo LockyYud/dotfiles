@@ -6,10 +6,10 @@ output "eDP-1" {
 // Connector numbers change when the dock is hot-plugged. Match external
 // displays by their stable Niri output names instead.
 output "LG Electronics MP59G 0x00039D20" {
-    position x=1920 y=0
+    position x=3840 y=0
 }
 output "LG Electronics MP59G 0x00039DC2" {
-    position x=3840 y=0
+    position x=1920 y=0
 }
 
 // Workspaces are deliberately left dynamic. Niri keeps them local to an
