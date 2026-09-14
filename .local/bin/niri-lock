@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+config="${XDG_CONFIG_HOME:-$HOME/.config}/swaylock/config"
+wallpaper="${NIRI_LOCK_WALLPAPER:-$HOME/Pictures/wallpapers/lockscreen1.jpg}"
+
+[ -f "$wallpaper" ] || {
+    printf 'Lockscreen wallpaper not found: %s\n' "$wallpaper" >&2
+    exit 1
+}
+
+args=()
+while IFS= read -r output; do
+    [ -n "$output" ] || continue
+    args+=(--image "${output}:${wallpaper}" --scaling fill)
+done < <(niri msg -j outputs 2>/dev/null | jq -r 'keys[]')
+
+[ "${#args[@]}" -gt 0 ] || exit 1
+
+if [ "${1:-}" = "--dry-run" ]; then
+    printf 'swaylock -f -C %q' "$config"
+    printf ' %q' "${args[@]}"
+    printf '\n'
+    exit 0
+fi
+
+exec swaylock -f -C "$config" "${args[@]}"

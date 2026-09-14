@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Toggles the always-visible persona-tasks-widget (systemd --user unit
+# persona-tasks-widget.service) show/hide via SIGUSR1 — the widget itself
+# stays running, only its window visibility flips. Wired to Waybar's
+# left-click on custom/persona-tasks and to Mod+Shift+T in Niri.
+
+pid="$(systemctl --user show --property=MainPID --value persona-tasks-widget 2>/dev/null || true)"
+
+if [[ -z "$pid" || "$pid" == "0" ]]; then
+    echo "persona-tasks-widget is not running (systemctl --user status persona-tasks-widget)" >&2
+    exit 1
+fi
+
+kill -SIGUSR1 "$pid"

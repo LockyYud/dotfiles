@@ -4,6 +4,9 @@
 .env.*
 *.local
 !*.example
+!.local/
+!.local/bin/
+!.local/bin/*
 
 # Secret and local runtime data
 .config/secrets/

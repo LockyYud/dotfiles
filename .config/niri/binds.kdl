@@ -1,0 +1,87 @@
+binds {
+    Mod+Return { spawn "kitty"; }
+    Mod+C { spawn "kitty" "sh" "-c" "q chat"; }
+    Mod+D { spawn "~/.local/bin/vicinae" "toggle"; }
+    // Search Bitwarden and copy the selected credential through Vicinae.
+    // Clipboard history remains available from Vicinae (Mod+D).
+    Mod+Shift+C { spawn "~/.local/bin/vicinae" "cmd" "launch" "@bl4zee1g/store.vicinae.bitwarden:browse-vault"; }
+    // Let Niri own the familiar shortcut and switch Fcitx5 input methods.
+    Mod+Space { spawn "~/.local/bin/niri-toggle-input-method"; }
+    Mod+A { spawn "niri-window-switcher"; }
+    Mod+Shift+X { spawn "swaync-client" "-t" "-sw"; }
+    Mod+Shift+Z { spawn "nm-connection-editor"; }
+    Mod+Shift+B { spawn "blueman-manager"; }
+    Mod+Alt+Z { spawn "~/.local/bin/niri-power-menu"; }
+    Mod+Shift+G { spawn "~/.local/bin/niri-power-menu"; }
+    // Toggle the always-visible persona-tasks-widget (show/hide via
+    // SIGUSR1, service keeps running — see persona-tasks-widget-toggle).
+    // For the full webapp (chat/settings/full list) use Waybar's
+    // right-click on custom/persona-tasks instead.
+    Mod+Shift+T { spawn "~/.local/bin/persona-tasks-widget-toggle"; }
+
+    Mod+H { focus-column-left; }
+    Mod+J { focus-window-down; }
+    Mod+K { focus-window-up; }
+    Mod+L { spawn "~/.local/bin/niri-lock"; }
+    Mod+Right { focus-column-right; }
+    Mod+Shift+H { move-column-left; }
+    Mod+Shift+J { move-window-down; }
+    Mod+Shift+K { move-window-up; }
+    Mod+Shift+L { move-column-right; }
+    Mod+Ctrl+H { consume-or-expel-window-left; }
+    Mod+Ctrl+L { consume-or-expel-window-right; }
+    Mod+Minus { set-column-width "-10%"; }
+    Mod+Equal { set-column-width "+10%"; }
+    Mod+Shift+Minus { set-window-height "-10%"; }
+    Mod+Shift+Equal { set-window-height "+10%"; }
+
+    Mod+M { maximize-column; }
+    Mod+F { fullscreen-window; }
+    Mod+Shift+F { toggle-window-floating; }
+    Mod+T { toggle-column-tabbed-display; }
+    Mod+W { close-window; }
+    Mod+BracketLeft { focus-workspace-up; }
+    Mod+BracketRight { focus-workspace-down; }
+
+    // Numeric workspace references are indexes on the focused output. They
+    // stay compact as monitors are connected or disconnected.
+    Mod+1 { focus-workspace "1"; }
+    Mod+2 { focus-workspace "2"; }
+    Mod+3 { focus-workspace "3"; }
+    Mod+4 { focus-workspace "4"; }
+    Mod+5 { focus-workspace "5"; }
+    Mod+6 { focus-workspace "6"; }
+    Mod+7 { focus-workspace "7"; }
+    Mod+8 { focus-workspace "8"; }
+    Mod+9 { focus-workspace "9"; }
+    Mod+0 { focus-workspace "10"; }
+    Mod+Shift+1 { move-column-to-workspace "1"; }
+    Mod+Shift+2 { move-column-to-workspace "2"; }
+    Mod+Shift+3 { move-column-to-workspace "3"; }
+    Mod+Shift+4 { move-column-to-workspace "4"; }
+    Mod+Shift+5 { move-column-to-workspace "5"; }
+    Mod+Shift+6 { move-column-to-workspace "6"; }
+    Mod+Shift+7 { move-column-to-workspace "7"; }
+    Mod+Shift+8 { move-column-to-workspace "8"; }
+    Mod+Shift+9 { move-column-to-workspace "9"; }
+    Mod+Shift+0 { move-column-to-workspace "10"; }
+
+    // Keep the screenshot muscle memory from the previous bspwm/sxhkd setup.
+    Mod+S { spawn "~/.local/bin/niri-screenshot" "region"; }
+    Mod+Shift+S { spawn "~/.local/bin/niri-screenshot" "region-copy"; }
+    Print { spawn "~/.local/bin/niri-screenshot" "region"; }
+    Ctrl+Print { spawn "~/.local/bin/niri-screenshot" "screen"; }
+    Ctrl+Shift+Print { spawn "~/.local/bin/niri-screenshot" "screen-copy"; }
+    Alt+Print { spawn "~/.local/bin/niri-screenshot" "window"; }
+    XF86MonBrightnessUp { spawn "brightnessctl" "set" "+5%"; }
+    XF86MonBrightnessDown { spawn "brightnessctl" "set" "5%-"; }
+    XF86AudioRaiseVolume { spawn "wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "5%+"; }
+    XF86AudioLowerVolume { spawn "wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "5%-"; }
+    XF86AudioMute { spawn "wpctl" "set-mute" "@DEFAULT_AUDIO_SINK@" "toggle"; }
+    XF86AudioPlay { spawn "playerctl" "play-pause"; }
+    XF86AudioNext { spawn "playerctl" "next"; }
+    XF86AudioPrev { spawn "playerctl" "previous"; }
+
+    Mod+Escape allow-inhibiting=false { toggle-keyboard-shortcuts-inhibit; }
+    Mod+Shift+E { quit; }
+}

@@ -1,0 +1,51 @@
+{
+  "layer": "top", "position": "top", "height": 30,
+  "margin-top": 7, "margin-left": 8, "margin-right": 8,
+  "modules-left": ["niri/workspaces"],
+  "modules-center": ["niri/window"],
+  "modules-right": ["custom/persona-tasks", "cpu", "memory", "clock", "backlight", "battery", "custom/bluetooth", "network", "pulseaudio", "custom/power"],
+
+  "niri/workspaces": { "format": "{value}", "display-condition": "only-populated" },
+  "niri/window": { "max-length": 70, "separate-outputs": true },
+  "cpu": { "interval": 3, "format": "  {usage}%", "tooltip": false },
+  "memory": { "interval": 3, "format": "  {used:0.1f}GiB", "tooltip-format": "RAM: {used:0.1f}GiB / {total:0.1f}GiB" },
+  "backlight": {
+    "device": "intel_backlight",
+    "format": "{icon}  {percent}%",
+    "format-icons": ["󰃞", "󰃟", "󰃠"],
+    "scroll-step": 5,
+    "min-brightness": 5,
+    "tooltip-format": "Laptop brightness: {percent}%\\nScroll to adjust by 5%"
+  },
+  "network": { "format-wifi": "󰤨  {signalStrength}%", "format-ethernet": "󰈀  {ipaddr}", "format-disconnected": "󰤭", "tooltip-format-wifi": "{essid}\n{ipaddr}", "on-click": "nm-connection-editor" },
+  "custom/persona-tasks": {
+    "exec": "$HOME/.config/waybar/scripts/persona-tasks-status",
+    "return-type": "json",
+    "interval": 60,
+    // The script keeps its text under ~26 chars so it can't squeeze
+    // niri/window out of the centre; max-length is the backstop if that ever
+    // regresses. Full titles are in the tooltip and in the widget.
+    //
+    // min-length is load-bearing, not cosmetic: max-length is what makes this
+    // the one ellipsizable module on the bar, so when the bar is overfull GTK
+    // takes ALL the slack from here and nowhere else — a long window title
+    // used to cut "✓ 0 · 5 open" down to "✓ 0…". Pinning a floor pushes the
+    // squeeze onto niri/window instead, which is what its own max-length is
+    // for: a window title can afford to lose its tail, a task count cannot.
+    // 18 covers every branch (longest is "Tasks · reconnect", 17).
+    "min-length": 18,
+    "max-length": 30,
+    "on-click": "$HOME/.local/bin/persona-tasks-widget-toggle",
+    "on-click-right": "$HOME/.local/bin/persona-tasks-open --tab"
+  },
+  "custom/bluetooth": {
+    "exec": "$HOME/.config/waybar/scripts/bluetooth-status",
+    "return-type": "json",
+    "interval": 15,
+    "on-click": "blueman-manager"
+  },
+  "pulseaudio": { "format": "{icon}  {volume}%", "format-muted": "󰖁", "format-icons": { "default": ["", "", ""] }, "on-click": "pavucontrol", "on-click-right": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle" },
+  "battery": { "format": "{icon}  {capacity}%", "format-icons": ["󰂎", "󰁺", "󰁹", "󰂀"] },
+  "clock": { "format": "󰃭  {:%d/%m, %H:%M}", "tooltip-format": "{:%A, %d %B %Y}", "on-click": "zenity --calendar --title='Calendar' --date-format='%d/%m/%Y'" },
+  "custom/power": { "format": "", "tooltip": true, "tooltip-format": "Power menu", "on-click": "$HOME/.local/bin/niri-power-menu" }
+}

@@ -1,0 +1,17 @@
+input {
+    keyboard {
+        repeat-delay 600
+        repeat-rate 25
+    }
+
+    touchpad {
+        tap
+        drag true
+        dwt
+        natural-scroll
+    }
+
+    // Do not focus a hidden scrolling-layout column just because the pointer
+    // passes over its hitbox on the way to another monitor.
+    focus-follows-mouse max-scroll-amount="0%"
+}

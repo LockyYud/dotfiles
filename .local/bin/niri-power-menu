@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+log=/tmp/niri-power-menu.debug.log
+exec 2>>"$log"
+set -x
+echo "=== run $(date -Is) ppid=$PPID ===" >>"$log"
+
+choice="$(printf '%s\n' Lock Suspend Logout Reboot Shutdown | "$HOME/.local/bin/vicinae" dmenu --placeholder 'Power')"
+echo "choice=[$choice]" >>"$log"
+case "$choice" in
+  Lock) pgrep -x swaylock >/dev/null || "$HOME/.local/bin/niri-lock" ;;
+  Suspend) loginctl suspend ;;
+  Logout|Reboot|Shutdown)
+    confirm="$(printf '%s\n' Cancel Confirm | "$HOME/.local/bin/vicinae" dmenu --placeholder "Confirm $choice")"
+    echo "confirm=[$confirm]" >>"$log"
+    [ "$confirm" = Confirm ] || exit 0
+    case "$choice" in
+      Logout) niri msg action quit ;;
+      Reboot) loginctl reboot ;;
+      Shutdown) loginctl poweroff ;;
+    esac
+    ;;
+esac

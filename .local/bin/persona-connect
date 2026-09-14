@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+config_dir="$HOME/.config/persona-assistant"
+token_file="$config_dir/desktop-token"
+config_file="$config_dir/config.env"
+
+usage() {
+    cat <<'EOF'
+Usage: persona-connect
+
+One-time setup for the desktop touch points (Waybar, Vicinae, Niri hotkey):
+
+1. Prompts for a desktop token minted from Persona Assistant's web app
+   (Settings -> "Connect this desktop") and stores it at
+   ~/.config/persona-assistant/desktop-token (mode 0600). None of the local
+   tools ever see WORKER_BFF_SHARED_SECRET — only this narrowly-scoped token.
+2. If ~/.config/persona-assistant/config.env doesn't exist yet, prompts for
+   the app/worker URLs (defaults to localhost dev) and writes it. Every
+   touch point reads that file via persona-config — edit it directly later
+   to repoint at your real deployed domain.
+EOF
+}
+
+case "${1:-}" in
+    -h|--help) usage; exit 0 ;;
+esac
+
+mkdir -p "$config_dir"
+
+echo "Paste the desktop token from Persona Assistant > Settings > Connect this desktop:"
+read -rs token
+echo
+
+if [[ -z "$token" ]]; then
+    echo "error: empty token, nothing saved" >&2
+    exit 1
+fi
+
+printf '%s' "$token" >"$token_file"
+chmod 600 "$token_file"
+echo "Saved token to $token_file"
+
+if [[ -f "$config_file" ]]; then
+    echo "Using existing config at $config_file (edit it directly to change URLs)."
+    exit 0
+fi
+
+read -rp "Persona Assistant app URL [http://localhost:3000]: " app_url
+read -rp "Persona Assistant worker URL [http://localhost:8787]: " worker_url
+
+cat >"$config_file" <<EOF
+PERSONA_APP_URL=${app_url:-http://localhost:3000}
+PERSONA_WORKER_URL=${worker_url:-http://localhost:8787}
+# Uncomment and set if Persona Assistant isn't logged in under Chrome's
+# default profile, so the app-mode window (Mod+Shift+T) reuses that login
+# instead of opening a blank one. Find yours under chrome://version.
+#PERSONA_CHROME_PROFILE=Profile 1
+EOF
+
+echo "Wrote $config_file"

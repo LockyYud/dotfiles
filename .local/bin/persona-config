@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Single source of truth for where Persona Assistant actually lives. Every
+# desktop touch point (Niri bind, Waybar module, Vicinae extension) reads
+# this instead of hardcoding a localhost URL, so pointing at the real
+# deployed domain is a one-file edit, not a grep-and-replace across repos.
+#
+# Usage: eval "$(persona-config)"
+config_file="$HOME/.config/persona-assistant/config.env"
+
+app_url="http://localhost:3000"
+worker_url="http://localhost:8787"
+chrome_profile=""
+
+if [[ -f "$config_file" ]]; then
+    # shellcheck disable=SC1090
+    source "$config_file"
+    app_url="${PERSONA_APP_URL:-$app_url}"
+    worker_url="${PERSONA_WORKER_URL:-$worker_url}"
+    chrome_profile="${PERSONA_CHROME_PROFILE:-$chrome_profile}"
+fi
+
+printf 'export PERSONA_APP_URL=%q\n' "$app_url"
+printf 'export PERSONA_WORKER_URL=%q\n' "$worker_url"
+printf 'export PERSONA_CHROME_PROFILE=%q\n' "$chrome_profile"

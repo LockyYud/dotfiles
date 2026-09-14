@@ -1,0 +1,19 @@
+[Unit]
+Description=Fcitx5 input method daemon for Niri
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/fcitx5 --replace
+# `fcitx5 --replace` (the tray menu's Restart, fcitx5-configtool, or a manual
+# run) makes the managed instance exit 0. With Restart=on-failure systemd left
+# the unit dead and the replacement daemon unmanaged, so nothing recovered it
+# once its Wayland input-method state died. Restart=always reclaims it: the
+# restart's own --replace takes over from the orphan.
+Restart=always
+RestartSec=2
+StartLimitIntervalSec=60
+StartLimitBurst=10
+
+[Install]
+WantedBy=graphical-session.target

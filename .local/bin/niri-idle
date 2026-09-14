@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+lock='pgrep -x swaylock >/dev/null || "$HOME/.local/bin/niri-lock"'
+exec swayidle -w \
+  timeout 300 "$lock" \
+  timeout 600 'niri msg action power-off-monitors' \
+  resume 'niri msg action power-on-monitors' \
+  before-sleep "$lock"

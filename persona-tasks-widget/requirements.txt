@@ -1,0 +1,7 @@
+PyGObject==3.50.0
+pycairo
+click
+loguru
+# Pinned to the commit validated live on this machine (see the plan/README)
+# — Fabric has no tagged releases, this is the reproducible equivalent.
+git+https://github.com/Fabric-Development/fabric.git@85cacf660b1a324525a4dd9b512521e55ef7f89b

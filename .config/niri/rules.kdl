@@ -1,0 +1,34 @@
+// Without this, Niri draws a solid backing rectangle for the focus ring,
+// which shows through Kitty's transparent background when it is focused.
+window-rule {
+    match app-id="^kitty$"
+    draw-border-with-background false
+}
+
+// libadwaita apps use rounded client-side corners; match their focus ring
+// without clipping the application's own shadows or geometry.
+window-rule {
+    match app-id="^org\\.gnome\\."
+    geometry-corner-radius 12
+}
+
+window-rule {
+    match app-id="^pavucontrol$"
+    open-floating true
+}
+window-rule {
+    match app-id="^nm-connection-editor$"
+    open-floating true
+}
+window-rule {
+    match app-id="^blueman-manager$"
+    open-floating true
+}
+window-rule {
+    match app-id="^org.gimp.GIMP$"
+    open-floating true
+}
+window-rule {
+    match app-id="^persona-tasks$"
+    open-floating true
+}

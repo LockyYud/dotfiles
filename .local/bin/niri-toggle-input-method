@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+current="$(fcitx5-remote -n 2>/dev/null || true)"
+
+case "$current" in
+    unikey)
+        fcitx5-remote -s keyboard-us
+        message="English"
+        ;;
+    *)
+        fcitx5-remote -s unikey
+        message="Vietnamese (Unikey)"
+        ;;
+esac
+
+notify-send -a IBus "Input method" "$message" >/dev/null 2>&1 || true

@@ -1,0 +1,12 @@
+[Unit]
+Description=Persona Assistant always-visible task widget
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+ExecStart=%h/.local/share/persona-tasks-widget/venv/bin/python %h/.local/share/persona-tasks-widget/main.py
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target

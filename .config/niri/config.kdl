@@ -1,0 +1,38 @@
+// Main Niri entry point. Keep host-specific output names in hosts/DuyDM-PC.kdl.
+include "input.kdl"
+include "layout.kdl"
+include "binds.kdl"
+include "recent-windows.kdl"
+include "rules.kdl"
+include "hosts/DuyDM-PC.kdl"
+
+screenshot-path "~/Pictures/Screenshots/Screenshot from %Y-%m-%d %H-%M-%S.png"
+
+environment {
+    ELECTRON_OZONE_PLATFORM_HINT "auto"
+    GTK_IM_MODULE "fcitx"
+    QT_IM_MODULE "fcitx"
+    XMODIFIERS "@im=fcitx"
+    SDL_IM_MODULE "fcitx"
+    // Kitty uses GLFW's IBus protocol frontend, which Fcitx5 provides too.
+    GLFW_IM_MODULE "ibus"
+}
+
+xwayland-satellite {
+    path "/usr/local/bin/xwayland-satellite"
+}
+
+cursor {
+    // Bibata was referenced but not installed, causing Niri to fall back to
+    // a large default cursor. Yaru is shipped with Ubuntu and has every shape.
+    xcursor-theme "Yaru"
+    // A global size is the only option Niri exposes. 12px keeps the pointer
+    // comfortable on the lower-DPI external panels without scaling outputs.
+    xcursor-size 12
+    hide-when-typing
+}
+
+overview {
+    zoom 0.5
+    backdrop-color "#1e1e2e"
+}

@@ -1,0 +1,79 @@
+/* A calm, floating bar with the legacy Polybar warmth only as an accent. */
+* { border: none; border-radius: 0; font-family: "JetBrainsMono Nerd Font Mono", "Symbols Nerd Font Mono", monospace; font-size: 12px; min-height: 0; }
+window#waybar { background: transparent; color: #cad3f5; }
+tooltip { background: #1e1e2e; border: 1px solid #45475a; border-radius: 8px; }
+
+#workspaces {
+  background: rgba(30, 30, 46, 0.94);
+  border: 1px solid rgba(69, 71, 90, 0.85);
+  border-radius: 9px;
+  padding: 2px 5px;
+}
+#workspaces button { color: #7f849c; font-weight: 600; min-width: 27px; padding: 0 5px; }
+#workspaces button:hover { background: #313244; color: #cad3f5; border-radius: 6px; }
+#workspaces button.active { background: #f5a97f; color: #1e1e2e; border-radius: 6px; }
+#workspaces button.urgent { background: #ed8796; color: #1e1e2e; border-radius: 6px; }
+#window {
+  background: rgba(30, 30, 46, 0.90);
+  border: 1px solid rgba(69, 71, 90, 0.75);
+  border-radius: 9px;
+  color: #bac2de;
+  font-weight: 600;
+  padding: 0 14px;
+}
+
+#custom-persona-tasks {
+  background: rgba(30, 30, 46, 0.94);
+  border: 1px solid rgba(69, 71, 90, 0.85);
+  border-radius: 9px;
+  color: #a6da95;
+  padding: 0 9px;
+  margin-right: 6px;
+}
+#custom-persona-tasks:hover { background: #313244; }
+#custom-persona-tasks.doing { color: #8aadf4; font-weight: 700; }
+#custom-persona-tasks.overdue { color: #ed8796; font-weight: 700; }
+#custom-persona-tasks.error, #custom-persona-tasks.reconnect { color: #6c7086; font-style: italic; }
+
+#cpu, #memory, #clock, #backlight, #battery, #custom-bluetooth, #network, #pulseaudio, #tray, #custom-power {
+  background: rgba(30, 30, 46, 0.94);
+  color: #bac2de;
+  padding: 0 9px;
+}
+#cpu { border: 1px solid rgba(69, 71, 90, 0.85); border-radius: 9px 0 0 9px; }
+#memory, #clock, #backlight, #battery, #custom-bluetooth, #network, #pulseaudio, #tray, #custom-power { border-top: 1px solid rgba(69, 71, 90, 0.85); border-bottom: 1px solid rgba(69, 71, 90, 0.85); border-left: 1px solid rgba(69, 71, 90, 0.45); }
+#custom-power { border-right: 1px solid rgba(69, 71, 90, 0.85); border-radius: 0 9px 9px 0; color: #ed8796; font-size: 14px; padding-right: 11px; }
+
+#clock { color: #f5a97f; }
+#backlight { color: #eed49f; }
+#network { color: #8aadf4; }
+#custom-bluetooth { color: #c6a0f6; }
+#pulseaudio { color: #a6da95; }
+#battery { color: #a6da95; }
+#battery.warning { color: #eed49f; }
+#battery.critical { color: #ed8796; }
+
+#custom-power:hover, #network:hover, #custom-bluetooth:hover, #pulseaudio:hover, #clock:hover, #backlight:hover { background: #313244; }
+
+/* Per-output palettes mirror the three wallpapers configured for this host. */
+window#waybar.eDP-1 #workspaces { border-color: rgba(245, 169, 127, 0.65); }
+window#waybar.eDP-1 #workspaces button.active { background: #f5a97f; }
+window#waybar.eDP-1 #window { border-color: rgba(245, 169, 127, 0.50); }
+window#waybar.eDP-1 #clock { color: #f5a97f; }
+window#waybar.eDP-1 #custom-power { color: #ed8796; }
+
+window#waybar.DP-3 #workspaces { border-color: rgba(138, 173, 244, 0.70); }
+window#waybar.DP-3 #workspaces button.active { background: #8aadf4; }
+window#waybar.DP-3 #window { border-color: rgba(145, 215, 227, 0.55); }
+window#waybar.DP-3 #clock { color: #91d7e3; }
+window#waybar.DP-3 #network { color: #8aadf4; }
+window#waybar.DP-3 #custom-bluetooth { color: #b7bdf8; }
+window#waybar.DP-3 #custom-power { color: #ed8796; }
+
+window#waybar.DP-4 #workspaces { border-color: rgba(238, 153, 160, 0.70); }
+window#waybar.DP-4 #workspaces button.active { background: #ee99a0; }
+window#waybar.DP-4 #window { border-color: rgba(245, 169, 127, 0.55); }
+window#waybar.DP-4 #clock { color: #f5a97f; }
+window#waybar.DP-4 #network { color: #eed49f; }
+window#waybar.DP-4 #pulseaudio { color: #f5a97f; }
+window#waybar.DP-4 #custom-power { color: #ed8796; }
