@@ -13,6 +13,11 @@ binds {
     Mod+Shift+B { spawn "blueman-manager"; }
     Mod+Alt+Z { spawn "~/.local/bin/niri-power-menu"; }
     Mod+Shift+G { spawn "~/.local/bin/niri-power-menu"; }
+    // Toggle the always-visible persona-tasks-widget (show/hide via
+    // SIGUSR1, service keeps running — see persona-tasks-widget-toggle).
+    // For the full webapp (chat/settings/full list) use Waybar's
+    // right-click on custom/persona-tasks instead.
+    Mod+Shift+T { spawn "~/.local/bin/persona-tasks-widget-toggle"; }
 
     Mod+H { focus-column-left; }
     Mod+J { focus-window-down; }

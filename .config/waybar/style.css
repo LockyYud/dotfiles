@@ -22,6 +22,19 @@ tooltip { background: #1e1e2e; border: 1px solid #45475a; border-radius: 8px; }
   padding: 0 14px;
 }
 
+#custom-persona-tasks {
+  background: rgba(30, 30, 46, 0.94);
+  border: 1px solid rgba(69, 71, 90, 0.85);
+  border-radius: 9px;
+  color: #a6da95;
+  padding: 0 9px;
+  margin-right: 6px;
+}
+#custom-persona-tasks:hover { background: #313244; }
+#custom-persona-tasks.doing { color: #8aadf4; font-weight: 700; }
+#custom-persona-tasks.overdue { color: #ed8796; font-weight: 700; }
+#custom-persona-tasks.error, #custom-persona-tasks.reconnect { color: #6c7086; font-style: italic; }
+
 #cpu, #memory, #clock, #backlight, #battery, #custom-bluetooth, #network, #pulseaudio, #tray, #custom-power {
   background: rgba(30, 30, 46, 0.94);
   color: #bac2de;

@@ -120,6 +120,18 @@ wayland_bin_entries=(
     niri-screenshot
     niri-idle
     niri-toggle-input-method
+    persona-connect
+    persona-config
+    persona-tasks-open
+    persona-tasks-widget-toggle
+)
+
+# Whole-directory entries symlinked into ~/.local/share instead of
+# ~/.config — for things that aren't a config dir or a standalone script
+# (e.g. persona-tasks-widget, which also has a venv/ created alongside it
+# by install/persona-tasks-widget.sh, gitignored, not part of this symlink).
+local_share_entries=(
+    persona-tasks-widget
 )
 
 # User-authored units are linked one by one so snap-managed units already in
@@ -133,10 +145,11 @@ systemd_user_entries=(
     niri-display-watch.service
     niri-polkit-agent.service
     niri-fcitx5.service
+    persona-tasks-widget.service
 )
 
 all_entries() {
-    printf '%s\n' "${core_entries[@]}" "${wayland_bin_entries[@]}" "${systemd_user_entries[@]/#/systemd-user/}"
+    printf '%s\n' "${core_entries[@]}" "${wayland_bin_entries[@]}" "${local_share_entries[@]}" "${systemd_user_entries[@]/#/systemd-user/}"
 }
 
 # True if $1 (a manifest entry) should be processed given --only. With no
@@ -148,7 +161,7 @@ entry_matches() {
     [ "$rel" = "$ONLY" ] && return 0
     if [ "$ONLY" = "wayland" ]; then
         case "$rel" in
-            niri|waybar|swaync|swaylock|swayidle|vicinae|systemd-user/*|niri-*) return 0 ;;
+            niri|waybar|swaync|swaylock|swayidle|vicinae|systemd-user/*|niri-*|persona-*) return 0 ;;
         esac
     fi
     return 1
@@ -158,7 +171,7 @@ validate_only() {
     [ -z "$ONLY" ] && return 0
     [ "$ONLY" = "wayland" ] && return 0
     local rel
-    for rel in "${core_entries[@]}" "${wayland_bin_entries[@]}" "${systemd_user_entries[@]/#/systemd-user/}"; do
+    for rel in "${core_entries[@]}" "${wayland_bin_entries[@]}" "${local_share_entries[@]}" "${systemd_user_entries[@]/#/systemd-user/}"; do
         [ "$rel" = "$ONLY" ] && return 0
     done
     echo "error: --only \"$ONLY\" does not match any manifest entry" >&2
@@ -199,6 +212,11 @@ main() {
     for rel in "${wayland_bin_entries[@]}"; do
         entry_matches "$rel" || continue
         link_entry ".local/bin/$rel" "$LOCAL_BIN_DIR/$rel" ".local/bin/$rel"
+    done
+
+    for rel in "${local_share_entries[@]}"; do
+        entry_matches "$rel" || continue
+        link_entry "$rel" "$HOME/.local/share/$rel" ".local/share/$rel"
     done
 
     for rel in "${systemd_user_entries[@]}"; do

@@ -1,0 +1,178 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Waybar's bar is one shared line: modules-center (niri/window) only stays
+# centered while the left and right blocks are narrow. This module used to
+# print the full next-up task title — 80+ characters of Notion prose — which
+# shoved the focused-window title off-centre and squeezed it to nothing.
+#
+# So it reports a *status*, never a task title: counts plus the time to the
+# soonest deadline among what is in progress. The full titles live in the
+# tooltip, and in the widget itself (Mod+Shift+T).
+# Everything the bar prints stays under ~26 characters; config.jsonc pins a
+# max-length as a second line of defence.
+#
+# Grouping mirrors the widget's: by task STATUS (in_progress before open),
+# not by schedule. The bar leading with "how many am I working on" and the
+# panel leading with "what is overdue" would be two answers to the same
+# glance. Overdue has not been dropped — it rides along as a "! N" marker,
+# because a late task still has to be visible without opening the panel.
+
+eval "$("$HOME/.local/bin/persona-config")"
+worker_url="${PERSONA_WORKER_URL}"
+token_file="$HOME/.config/persona-assistant/desktop-token"
+
+emit() {
+    jq -cn --arg text "$1" --arg tooltip "$2" --arg class "$3" \
+        '{text: $text, tooltip: $tooltip, class: $class}'
+}
+
+# Formatting lives in jq rather than bash: it counts codepoints, not bytes, so
+# truncating a Vietnamese title can't cut a character in half.
+read -r -d '' format_program <<'JQ' || true
+# Pace gaps are already in minutes and want the detail: "behind by 4h20m"
+# rounded to "4h" would understate a deficit by nearly a third of an hour.
+def fmt_minutes:
+  (. | round) as $m
+  | if $m < 60 then "\($m)m"
+    elif ($m % 60) == 0 then "\(($m / 60) | floor)h"
+    else "\(($m / 60) | floor)h\($m % 60)m"
+    end;
+
+def compact_duration:
+  (. / 60 | floor) as $minutes
+  | if $minutes < 60 then "\($minutes)m"
+    elif $minutes < 1440 then "\(($minutes / 60) | round)h"
+    else "\(($minutes / 1440) | round)d"
+    end;
+
+# dueAt carries milliseconds ("...T00:00:00.000Z"), which fromdateiso8601
+# rejects outright.
+def seconds_until:
+  (sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601) - now;
+
+def due_in:
+  seconds_until | if . < 0 then "late by \(- . | compact_duration)" else compact_duration end;
+
+# Subtasks are dropped everywhere, exactly as the widget drops them: a
+# subtask counted here but not there would make the bar and the panel
+# disagree about how much is in progress.
+def top_level: map(select(.parentTaskId == null));
+
+def is_overdue: (.dueAt // null) != null and (.dueAt | seconds_until) < 0;
+
+# The schedule buckets flattened back into one list, in the same order and
+# with the same de-duplication as the widget's all_tasks(): nextUp restates
+# future[0], so walking both would count that task twice.
+# `ongoing` holds the routines — tasks pursued at a rate per month. They carry
+# no dueAt so they are in none of the schedule buckets, and leaving them out
+# here undercounted "doing": a routine is in_progress by definition, so the bar
+# was reporting fewer tasks in progress than the panel showed.
+def flatten_now:
+  ((.overdue // []) + (.today // []) + (.future // []) + (.unscheduled // []) + (.ongoing // []))
+  | top_level
+  | reduce .[] as $task ([]; if any(.[]; .id == $task.id) then . else . + [$task] end);
+
+.now as $now
+| ($now | flatten_now) as $tasks
+| ($tasks | map(select(.status == "in_progress"))) as $doing_tasks
+| ($tasks | map(select(.status != "in_progress"))) as $open_tasks
+| ($tasks | map(select((.pace // null) != null))) as $routine_tasks
+| ($routine_tasks | map(select(.pace.status == "behind"))) as $behind_tasks
+# Routines are listed on their own below, with their pace; repeating them under
+# "In progress" would say the same thing twice and without the number that
+# matters.
+| ($doing_tasks | map(select((.pace // null) == null))) as $doing_dated
+| ($tasks | map(select(is_overdue))) as $overdue_tasks
+| ($doing_tasks | length) as $doing
+| ($open_tasks | length) as $open
+| ($overdue_tasks | length) as $overdue
+| ($now.unscheduledCount // 0) as $unscheduled
+| (
+    # Soonest deadline among what is actually being worked on — the one
+    # number worth spending characters on once nothing is late.
+    $doing_tasks | map(select(.dueAt != null)) | sort_by(.dueAt) | first
+  ) as $doing_next
+| (
+    if $doing > 0 and $overdue > 0 then
+      { text: "▶ \($doing) · ! \($overdue) late", class: "overdue" }
+    elif $doing > 0 then
+      { text: ("▶ \($doing) doing" + (if $doing_next then " · \($doing_next.dueAt | due_in)" else "" end)),
+        class: "doing" }
+    elif $overdue > 0 then
+      { text: "! \($overdue) overdue", class: "overdue" }
+    elif $open > 0 then
+      { text: "✓ 0 · \($open) open", class: "ok" }
+    else
+      { text: "✓ all clear", class: "ok" }
+    end
+  )
+| . + { tooltip: (
+    ["In progress \($doing) · Open \($open)"
+     + (if $overdue > 0 then " · Overdue \($overdue)" else "" end)
+     + (if ($behind_tasks | length) > 0
+        then " · Behind \($behind_tasks | length)" else "" end)]
+    + (
+        if ($routine_tasks | length) > 0 then
+          ["", "Routines:"]
+          + ($routine_tasks[0:5] | map(
+              "• \(.title) — \(.pace.spentMinutes | fmt_minutes)/\(.pace.targetMinutes | fmt_minutes)"
+              + (if .pace.status == "behind" then " (behind \(- .pace.deltaMinutes | fmt_minutes))"
+                 elif .pace.status == "ahead" then " (ahead)"
+                 else " (on track)" end)
+              + (if .pace.suggestedTodayMinutes > 0
+                 then ", today \(.pace.suggestedTodayMinutes | fmt_minutes)" else "" end)
+            ))
+          + (if ($routine_tasks | length) > 5 then ["• +\(($routine_tasks | length) - 5) more"] else [] end)
+        else [] end
+      )
+    + (
+        if ($doing_dated | length) > 0 then
+          ["", "In progress:"]
+          + ($doing_dated[0:5] | map(
+              "• \(.title)"
+              + (if .dueAt then " (\(.dueAt | due_in))" else "" end)
+              + (if .progress then " \(.progress.done)/\(.progress.total)" else "" end)
+            ))
+          + (if ($doing_dated | length) > 5
+             then ["• +\(($doing_dated | length) - 5) more"] else [] end)
+        else [] end
+      )
+    + (
+        if $open > 0 then
+          ["", "Open:"]
+          + ($open_tasks[0:5] | map("• \(.title)" + (if .dueAt then " (\(.dueAt | due_in))" else "" end)))
+          + (if $open > 5 then ["• +\($open - 5) more"] else [] end)
+        else [] end
+      )
+    + (if $unscheduled > ($tasks | map(select(.dueAt == null)) | length)
+       then ["", "\($unscheduled) unscheduled in total"] else [] end)
+    + ["", "Click: toggle widget · Right-click: open in browser"]
+    | join("\n")
+  ) }
+JQ
+
+if [[ ! -s "$token_file" ]]; then
+    emit "Tasks · reconnect" "Run persona-connect to link this desktop." "reconnect"
+    exit 0
+fi
+
+# Debug seam: point PERSONA_TASKS_FIXTURE at a saved /desktop/tasks/now
+# response to render it without hitting the worker.
+if [[ -n "${PERSONA_TASKS_FIXTURE:-}" ]]; then
+    response="$(<"$PERSONA_TASKS_FIXTURE")"
+else
+    token="$(<"$token_file")"
+    response="$(curl -fsS --max-time 8 -H "Authorization: Bearer ${token}" \
+        "${worker_url}/desktop/tasks/now" 2>/dev/null)" || {
+        emit "Tasks · offline" "Couldn't reach Persona Assistant." "error"
+        exit 0
+    }
+fi
+
+if [[ "$(jq -r 'has("now")' <<<"$response" 2>/dev/null)" != "true" ]]; then
+    emit "Tasks · reconnect" "Desktop token invalid or revoked. Run persona-connect." "reconnect"
+    exit 0
+fi
+
+jq -c "$format_program" <<<"$response"

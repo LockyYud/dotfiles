@@ -1,0 +1,582 @@
+/* Same palette family as ~/.config/waybar/style.css — reads as one system,
+   not a bolted-on widget.
+
+   Color tokens via GTK3's @define-color (the GTK3 CSS engine doesn't support
+   real CSS custom properties/var(), but this gets the same de-duplication
+   for colors). Opacity variants use GTK's alpha(@color, a) function instead
+   of hardcoding rgba(...) at every call site; shade(@color, f) generates a
+   lighter/darker variant (f > 1 lightens, f < 1 darkens).
+
+   Three text tiers, referenced throughout:
+     @text-primary   — titles, task text, anything actionable
+     @text-secondary — supporting text (subtitles, due times)
+     @text-muted     — field labels, dividers, decorative text
+
+   Type scale is deliberately three sizes only — 13px content / 11px meta /
+   10px labels — plus 15px for the empty-state check. Content (task titles,
+   subtask titles) is sans, because Vietnamese diacritics in a monospace face
+   get wide and noisy; mono is kept for the things that are meant to read as
+   data: ticket keys, meters, due times, section labels.
+
+   Spacing stays literal (@define-color only covers colors) — scale used:
+   4 / 8 / 12 / 16px, avoid odd values outside that set. Border → content
+   inset is a uniform 8px via the window's own padding — nothing below adds
+   its own extra horizontal margin on top of that.
+*/
+
+@define-color bg #181825;
+@define-color text-primary #e5e7ef;
+@define-color text-secondary #9a9bae;
+@define-color text-muted #66687a;
+@define-color tint #cad3f5;         /* neutral lavender used for subtle hover/bg overlays */
+@define-color border-base #45475a;  /* generic 1px borders */
+@define-color accent #8aadf4;       /* selected/primary-action blue */
+@define-color success #a6da95;      /* low priority, complete action */
+@define-color warning #f5a97f;      /* high priority */
+@define-color danger #ed8796;       /* urgent priority, error state */
+@define-color today #eed49f;
+@define-color marker-medium-color #7f9cc4;  /* desaturated so it doesn't compete with @accent */
+@define-color marker-low-color #8caf8a;
+
+window {
+  background: alpha(@bg, 0.97);
+  border: 1px solid alpha(@accent, 0.25);
+  border-radius: 14px;
+  color: @text-primary;
+  font-family: "JetBrainsMono Nerd Font Mono", "Symbols Nerd Font Mono", monospace;
+  font-size: 12px;
+  padding: 8px;
+}
+
+.header-row {
+  min-height: 24px;
+}
+
+/* Header/body text is bare (no border of its own), while the composer's
+   entry has its own internal padding on top of the window's — this closes
+   the gap so both read at roughly the same distance from the widget edge. */
+.content-inset {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.header {
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.6px;
+  color: @text-secondary;
+}
+
+button.close-btn {
+  background: transparent;
+  color: @text-muted;
+  border: none;
+  border-radius: 6px;
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0px;
+  font-size: 14px;
+  opacity: 0.55;
+  transition: background 140ms ease, color 140ms ease, opacity 140ms ease;
+}
+
+button.close-btn:hover {
+  background: alpha(@text-primary, 0.06);
+  color: @danger;
+  opacity: 1;
+}
+
+/* The list scrolls instead of being truncated; the scrollbar overlays rather
+   than reserving a gutter that would shift the content width. */
+.body-scroll undershoot,
+.body-scroll overshoot {
+  background: none;
+}
+
+.body-scroll scrollbar {
+  background: transparent;
+  border: none;
+}
+
+.body-scroll scrollbar slider {
+  background: alpha(@text-muted, 0.5);
+  border: none;
+  border-radius: 8px;
+  min-width: 4px;
+}
+
+/* Sections are statuses now, not schedule buckets — see main.py's grouping
+   model. In progress is the tone that carries the accent; Open stays muted
+   so the eye lands on what is already started. */
+.section-title {
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  color: @text-muted;
+  padding-top: 8px;
+  padding-bottom: 4px;
+}
+
+.section-label {
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+}
+
+.section-title.in-progress .section-label {
+  color: @accent;
+}
+
+.section-title.open .section-label {
+  color: @text-muted;
+}
+
+/* Routines lead the panel: they are the one section acted on every day. The
+   accent is shared with "In progress" on purpose — a routine IS in progress,
+   and giving it a colour of its own would imply a third kind of work. */
+.section-title.routines .section-label {
+  color: @accent;
+}
+
+/* Sits under the Routines header rather than in it: "2 behind this month" is
+   the only signal a routine can produce (having no deadline to go overdue
+   against), so it must survive without hovering anything. */
+.section-subnote {
+  color: @danger;
+  font-size: 10px;
+  letter-spacing: 0.3px;
+  padding-bottom: 2px;
+}
+
+.routine-day {
+  color: @text-muted;
+  font-size: 10px;
+  letter-spacing: 0.3px;
+}
+
+/* A routine with nothing committed to today. Muted, not alarming: not having
+   planned the day yet at 9am is normal, and the pace line above already says
+   whether the month is actually slipping. */
+.routine-unplanned {
+  color: @text-muted;
+  font-size: 11px;
+  padding-top: 1px;
+}
+
+/* Once the day's session is done the line is a record, not a prompt. */
+.step-title.done {
+  color: @success;
+}
+
+/* The overdue count moved here when overdue stopped being its own section:
+   it is the one schedule signal that has to survive a long Open list. */
+.section-overdue-badge {
+  color: @danger;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  background: alpha(@danger, 0.12);
+  border-radius: 5px;
+  padding: 0px 5px;
+}
+
+.section-arrow {
+  color: @accent;
+  font-size: 12px;
+  padding-left: 4px;
+}
+
+/* Only the Open header is clickable; make that legible on hover without
+   turning a section label into a button-looking thing at rest. */
+button.section-toggle {
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  min-height: 0px;
+  padding-top: 8px;
+  padding-bottom: 4px;
+  transition: background 140ms ease;
+}
+
+button.section-toggle:hover {
+  background: alpha(@tint, 0.05);
+}
+
+button.section-toggle:hover .section-label {
+  color: @text-primary;
+}
+
+button.section-toggle:focus {
+  box-shadow: 0 0 0 1px alpha(@accent, 0.72);
+}
+
+/* A task and its next subtask form one block held together by a single
+   priority-colored left border — that border, not indentation, is what makes
+   parent and child read as one unit. */
+.task-block {
+  padding: 4px 4px 4px 8px;
+  border-left: 3px solid @border-base;
+  border-radius: 0px 8px 8px 0px;
+  transition: background 140ms ease;
+}
+
+.task-block.hovered {
+  background: alpha(@tint, 0.05);
+}
+
+.task-block.accent-urgent {
+  border-left-color: @danger;
+}
+
+.task-block.accent-high {
+  border-left-color: @warning;
+}
+
+.task-block.accent-medium {
+  border-left-color: @marker-medium-color;
+}
+
+.task-block.accent-low {
+  border-left-color: @marker-low-color;
+}
+
+.task-head {
+  min-height: 16px;
+}
+
+/* Ticket key lifted out of the title — mono, boxed, so it reads as an
+   identifier and the wrapped title next to it stays short. */
+.ticket-badge {
+  color: @text-secondary;
+  background: alpha(@tint, 0.07);
+  border-radius: 4px;
+  padding: 0px 4px;
+  font-size: 10px;
+  letter-spacing: 0.3px;
+}
+
+/* work / personal is background classification: present, never competing
+   with priority or the title. */
+.type-label {
+  color: @text-muted;
+  font-size: 10px;
+  letter-spacing: 0.3px;
+}
+
+.task-title {
+  color: @text-primary;
+  font-family: "Noto Sans", "Roboto", "DejaVu Sans", sans-serif;
+  font-size: 13px;
+}
+
+.task-meta-row {
+  min-height: 20px;
+}
+
+.task-meta {
+  color: @text-secondary;
+  font-size: 11px;
+}
+
+.task-meta.overdue {
+  color: @danger;
+}
+
+.task-meta.muted {
+  color: @text-muted;
+}
+
+/* Subtask meter — pips for small totals, a proportional bar past that, with
+   the done/total fraction always spelled out beside it. */
+.meter {
+  min-height: 16px;
+}
+
+.pips-done {
+  color: @accent;
+  font-size: 10px;
+}
+
+.pips-todo {
+  color: alpha(@text-muted, 0.8);
+  font-size: 10px;
+}
+
+.meter-track {
+  background: alpha(@text-muted, 0.28);
+  border-radius: 3px;
+  min-height: 4px;
+}
+
+.meter-fill {
+  background: @accent;
+  border-radius: 3px;
+  min-height: 4px;
+}
+
+.meter-count {
+  color: @text-muted;
+  font-size: 10px;
+}
+
+.meter-count.complete {
+  color: @success;
+}
+
+/* The next actionable subtask, indented under its parent inside the shared
+   accent border. */
+.next-step-row {
+  padding-left: 4px;
+  min-height: 22px;
+}
+
+.step-connector {
+  color: @text-muted;
+  font-size: 11px;
+}
+
+.step-title {
+  color: @text-secondary;
+  font-family: "Noto Sans", "Roboto", "DejaVu Sans", sans-serif;
+  font-size: 12px;
+}
+
+.task-block.hovered .step-title {
+  color: @text-primary;
+}
+
+/* Ghost by default so a column of green buttons never outweighs the task text
+   it belongs to; it only materialises on the hovered block. */
+button.complete-btn {
+  background: transparent;
+  color: @text-muted;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  min-width: 26px;
+  min-height: 22px;
+  padding: 0px 6px;
+  font-size: 10px;
+  opacity: 0.45;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease, opacity 140ms ease;
+}
+
+.task-block.hovered button.complete-btn {
+  background: alpha(@success, 0.08);
+  color: @success;
+  border-color: alpha(@success, 0.3);
+  opacity: 1;
+}
+
+.task-block.hovered button.complete-btn:hover {
+  background: alpha(@success, 0.25);
+}
+
+button.complete-btn:focus {
+  box-shadow: 0 0 0 1px alpha(@accent, 0.72);
+  opacity: 1;
+}
+
+/* Blocked = the parent still has open subtasks. Stays visible (so the row
+   doesn't reflow) but is plainly inert, with a tooltip saying why. */
+button.complete-btn.blocked,
+.task-block.hovered button.complete-btn.blocked {
+  background: transparent;
+  border-color: transparent;
+  color: @text-muted;
+  opacity: 0.25;
+}
+
+/* The open <-> in_progress toggle, sharing the ✓ button's resting weight so
+   the pair reads as one action group. Unlike ✓ it stays faintly visible when
+   the block isn't hovered: on an Open task it's the primary next move, so it
+   has to be discoverable without hovering every row to find it. */
+button.status-btn {
+  background: transparent;
+  color: @text-muted;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  min-width: 26px;
+  min-height: 22px;
+  padding: 0px 6px;
+  font-size: 10px;
+  opacity: 0.55;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease, opacity 140ms ease;
+}
+
+.task-block.hovered button.status-btn {
+  background: alpha(@accent, 0.1);
+  color: @accent;
+  border-color: alpha(@accent, 0.32);
+  opacity: 1;
+}
+
+.task-block.hovered button.status-btn:hover {
+  background: alpha(@accent, 0.26);
+}
+
+button.status-btn:focus {
+  box-shadow: 0 0 0 1px alpha(@accent, 0.72);
+  opacity: 1;
+}
+
+/* Already started: the button now means "stop", so it drops the accent
+   (which the block itself is carrying) and reads as the quieter of the two. */
+button.status-btn.started {
+  color: @accent;
+  opacity: 0.75;
+}
+
+.task-block.hovered button.status-btn.started {
+  background: alpha(@tint, 0.1);
+  color: @text-primary;
+  border-color: alpha(@border-base, 0.85);
+}
+
+/* An in-progress block gets a faint accent wash so the two sections stay
+   distinguishable while scrolled past their headers. */
+.task-block.status-in-progress {
+  background: alpha(@accent, 0.055);
+}
+
+.task-block.status-in-progress.hovered {
+  background: alpha(@accent, 0.1);
+}
+
+/* Duration chips — how much of today a task gets. On every block, always
+   visible: this is the panel's primary control, and it took the row the
+   schedule (due time plus snooze) used to occupy. */
+button.plan-btn {
+  background: alpha(@tint, 0.08);
+  color: @text-secondary;
+  border: 1px solid alpha(@border-base, 0.85);
+  border-radius: 6px;
+  min-height: 20px;
+  padding: 0px 8px;
+  font-size: 10px;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+button.plan-btn:hover {
+  background: alpha(@tint, 0.18);
+  color: @text-primary;
+}
+
+/* The accented chip. Exactly one per row, and it always means "this is what
+   is in effect": today's planned length, or the task's monthly target. Only
+   when nothing is set does it fall on the pace's suggestion — highlighting a
+   suggestion next to a different, already-chosen number reads as though the
+   suggestion had been chosen. Also used for the ✓ that confirms a typed
+   value, which is the same primary-action treatment. */
+button.plan-btn.current {
+  color: @accent;
+  border-color: alpha(@accent, 0.55);
+  background: alpha(@accent, 0.12);
+}
+
+button.plan-btn.current:hover {
+  background: alpha(@accent, 0.22);
+  color: @text-primary;
+}
+
+button.plan-btn:focus {
+  box-shadow: 0 0 0 1px alpha(@accent, 0.72);
+}
+
+/* The monthly-target picker, revealed by ⟳ on any block. Boxed off with a top
+   rule because it is a mode: while it is open the chips mean "hours per
+   month", not "minutes of today", and those two rows otherwise look alike. */
+.target-picker {
+  border-top: 1px solid alpha(@border-base, 0.6);
+  margin-top: 3px;
+  padding-top: 4px;
+  min-height: 24px;
+}
+
+.target-picker-label {
+  color: @text-muted;
+  font-size: 10px;
+  letter-spacing: 0.3px;
+}
+
+/* The free-text field, shown in place of the chips. Same top rule as the
+   target picker, since it is the same kind of mode: while it is open the
+   block is asking a question rather than offering buttons. */
+.inline-entry-row {
+  border-top: 1px solid alpha(@border-base, 0.6);
+  margin-top: 3px;
+  padding-top: 4px;
+  min-height: 26px;
+}
+
+entry.inline-entry {
+  background: alpha(@tint, 0.08);
+  color: @text-primary;
+  border: 1px solid alpha(@accent, 0.45);
+  border-radius: 6px;
+  min-height: 22px;
+  padding: 0px 8px;
+  font-size: 11px;
+  caret-color: @accent;
+}
+
+entry.inline-entry:focus {
+  border-color: alpha(@accent, 0.85);
+  background: alpha(@accent, 0.1);
+}
+
+/* Marks a value that would not parse, without throwing away what was typed. */
+entry.inline-entry.invalid {
+  border-color: @danger;
+  color: @danger;
+}
+
+/* Empty state: an icon + two-level text block, not a single flat line. */
+.empty-state {
+  padding: 8px 0px 4px 0px;
+}
+
+.empty-check {
+  color: @success;
+  font-size: 15px;
+  padding-top: 1px;
+}
+
+.empty-title {
+  color: @text-primary;
+  font-family: "Noto Sans", "Roboto", "DejaVu Sans", sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.empty-subtitle {
+  color: @text-secondary;
+  font-size: 11px;
+}
+
+.footer-note {
+  color: @text-muted;
+  font-size: 10px;
+  padding: 4px 0px;
+}
+
+/* Sync age — the difference between "nothing is due" and "the worker is
+   unreachable and this list is old" has to be visible somewhere. */
+.sync-note {
+  color: alpha(@text-muted, 0.75);
+  font-size: 10px;
+  padding-top: 8px;
+}
+
+.sync-note.stale {
+  color: @danger;
+}
+
+.state-message {
+  color: @text-secondary;
+  font-size: 12px;
+  padding: 10px 0px;
+}
+
+.state-message.error {
+  color: @danger;
+}

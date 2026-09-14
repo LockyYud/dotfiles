@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Usage: persona-tasks-open [--tab] [/path]
+#   (no args)  chrome-less "app mode" window — no default keybind anymore,
+#              run manually if you want it (daily use is the always-visible
+#              widget instead — see persona-tasks-widget-toggle)
+#   --tab      regular browser tab (Waybar right-click: chat/settings/full
+#              list; also used by the widget's "N unscheduled" nav row)
+#   /path      defaults to /tasks; e.g. /tasks/all for the full list
+#
+# Deliberately uses the default Chrome profile (no --user-data-dir) so the
+# app-mode window reuses your existing Persona Assistant login instead of
+# opening a blank, logged-out profile. Set PERSONA_CHROME_PROFILE in
+# ~/.config/persona-assistant/config.env if Persona isn't logged in under
+# Chrome's default profile.
+
+eval "$("$HOME/.local/bin/persona-config")"
+
+profile_args=()
+if [[ -n "${PERSONA_CHROME_PROFILE:-}" ]]; then
+    profile_args=("--profile-directory=${PERSONA_CHROME_PROFILE}")
+fi
+
+tab_mode=0
+path="/tasks"
+for arg in "$@"; do
+    case "$arg" in
+        --tab) tab_mode=1 ;;
+        /*) path="$arg" ;;
+    esac
+done
+tasks_url="${PERSONA_APP_URL}${path}"
+
+if [[ "$tab_mode" -eq 1 ]]; then
+    exec google-chrome-stable "${profile_args[@]}" "$tasks_url"
+fi
+
+# --class sets the Wayland app-id Niri's window-rule (rules.kdl) matches on
+# ^persona-tasks$ — verify once with `niri msg windows` after this first
+# opens; Chrome/Ozone usually honors --class but it's worth confirming here.
+exec google-chrome-stable "${profile_args[@]}" "--app=${tasks_url}" "--class=persona-tasks"
