@@ -105,9 +105,11 @@ button.close-btn:hover {
   min-width: 4px;
 }
 
-/* Sections are statuses now, not schedule buckets — see main.py's grouping
-   model. In progress is the tone that carries the accent; Open stays muted
-   so the eye lands on what is already started. */
+/* Section labels used throughout: Today's NEXT/LATER/DONE (plain, no
+   toggle), Browse tasks' In progress/Open (status-grouped, see main.py),
+   and the Browse/missed-yesterday headers below (clickable, hence
+   .section-toggle). In progress carries the accent; Open stays muted so the
+   eye lands on what is already started. */
 .section-title {
   font-weight: 700;
   font-size: 10px;
@@ -131,36 +133,20 @@ button.close-btn:hover {
   color: @text-muted;
 }
 
-/* Routines lead the panel: they are the one section acted on every day. The
-   accent is shared with "In progress" on purpose — a routine IS in progress,
-   and giving it a colour of its own would imply a third kind of work. */
-.section-title.routines .section-label {
-  color: @accent;
+/* Today's own NEXT/LATER/DONE labels — same type scale as .section-label,
+   just not wrapped in a .section-title row of its own (no toggle, no count
+   badge slot needed). */
+.today-label {
+  padding-top: 8px;
+  padding-bottom: 4px;
 }
 
-/* Sits under the Routines header rather than in it: "2 behind this month" is
-   the only signal a routine can produce (having no deadline to go overdue
-   against), so it must survive without hovering anything. */
-.section-subnote {
-  color: @danger;
-  font-size: 10px;
-  letter-spacing: 0.3px;
-  padding-bottom: 2px;
-}
-
-.routine-day {
+.section-title.browse .section-label {
   color: @text-muted;
-  font-size: 10px;
-  letter-spacing: 0.3px;
 }
 
-/* A routine with nothing committed to today. Muted, not alarming: not having
-   planned the day yet at 9am is normal, and the pace line above already says
-   whether the month is actually slipping. */
-.routine-unplanned {
-  color: @text-muted;
-  font-size: 11px;
-  padding-top: 1px;
+.section-title.missed .section-label {
+  color: @today;
 }
 
 /* Once the day's session is done the line is a record, not a prompt. */
@@ -343,6 +329,90 @@ button.section-toggle:focus {
 
 .task-block.hovered .step-title {
   color: @text-primary;
+}
+
+/* Today items — NEXT is the accented, full-weight row; LATER rows are the
+   same shape at lower visual weight. Both share the priority accent border
+   Browse blocks use, so the panel reads as one visual language throughout. */
+.today-item {
+  padding: 4px 4px 4px 8px;
+  border-left: 3px solid @border-base;
+  border-radius: 0px 8px 8px 0px;
+}
+
+.today-item.accent-urgent {
+  border-left-color: @danger;
+}
+
+.today-item.accent-high {
+  border-left-color: @warning;
+}
+
+.today-item.accent-medium {
+  border-left-color: @marker-medium-color;
+}
+
+.today-item.accent-low {
+  border-left-color: @marker-low-color;
+}
+
+.today-item.primary {
+  background: alpha(@accent, 0.06);
+}
+
+.today-item.compact {
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+/* Today's own action row (✓ ⊘ ···) stays legible without a hover state to
+   reveal it — unlike Browse, Today is the panel's primary surface. */
+button.today-action {
+  opacity: 0.75;
+}
+
+button.today-action:hover {
+  opacity: 1;
+}
+
+/* A due/overdue task or an unplanned routine, offered as something to add to
+   Today. One row, two lines of text and a single action — no border, no
+   meter, because these aren't full task blocks, just a nudge. */
+.attention-row {
+  padding: 3px 2px;
+}
+
+.missed-banner {
+  padding-bottom: 2px;
+}
+
+/* The Today composer — focus text plus duration chips. Boxed off with a top
+   rule, the same "this is a mode now" treatment as the monthly-target
+   entry below. */
+.composer {
+  border-top: 1px solid alpha(@border-base, 0.6);
+  margin-top: 3px;
+  padding-top: 4px;
+}
+
+/* Right-click/···-menu popovers, themed to match the panel rather than the
+   system GTK theme. */
+menu.panel-menu {
+  background-color: @bg;
+  border: 1px solid alpha(@accent, 0.25);
+  border-radius: 8px;
+  padding: 4px;
+}
+
+menu.panel-menu menuitem {
+  color: @text-primary;
+  font-size: 11px;
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+
+menu.panel-menu menuitem:hover {
+  background: alpha(@accent, 0.18);
 }
 
 /* Ghost by default so a column of green buttons never outweighs the task text

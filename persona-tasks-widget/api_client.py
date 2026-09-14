@@ -114,15 +114,26 @@ class NowTasks(TypedDict):
 
 
 class SessionRow(TypedDict):
-    """One day's committed work on a task, with the task it belongs to."""
+    """One Today item — a planned/done/skipped/cancelled slice of a day,
+    with the task it belongs to.
+
+    Today Plan v1: a task can now have several of these on the same day
+    (`position` orders them within the day), and `sessionId` — not
+    (taskId, date) — is what makes a plan_session() call a revise instead of
+    a new item. `focusText` is what the item is actually about today, which
+    may be narrower than the task's own title (e.g. "Run baseline" on a task
+    titled "RAG Pipeline Lab").
+    """
 
     id: str
     taskId: str
     date: str
     startAt: Optional[str]
+    position: int
+    focusText: Optional[str]
     plannedMinutes: int
     actualMinutes: Optional[int]
-    status: str  # "planned" | "done" | "skipped"
+    status: str  # "planned" | "done" | "skipped" | "cancelled"
     task: TaskRow
 
 
@@ -130,6 +141,10 @@ class Today(TypedDict):
     date: str
     timezone: str
     sessions: list[SessionRow]
+    # Yesterday's items still "planned" when their day ended — neither done,
+    # skipped, nor cancelled. Surfaced so the panel can offer to carry them
+    # forward instead of quietly losing them.
+    missedYesterday: list[SessionRow]
     ongoing: list[TaskRow]
 
 
@@ -222,42 +237,64 @@ def fetch_panel() -> Panel:
     return {"now": now, "today": today}
 
 
-def plan_session(task_id: str, planned_minutes: int) -> SessionRow:
-    """Commit minutes of today to a task, returning the session.
+def plan_session(
+    task_id: str,
+    planned_minutes: int,
+    *,
+    session_id: Optional[str] = None,
+    date: Optional[str] = None,
+    focus_text: Optional[str] = None,
+    start_at: Optional[str] = None,
+) -> SessionRow:
+    """Add or revise a Today item.
 
-    Idempotent per (task, day): planning the same task again revises that
-    session rather than adding a second, so the chips double as "change it to".
+    Not idempotent per (task, day) any more — a task can carry several items
+    on the same day. Omitting `session_id` always appends a new item; passing
+    one revises that specific item instead (and only while it is still
+    "planned" — the worker 400s on trying to revise a done/skipped/cancelled
+    one). `date` defaults to the caller's local today on the worker side.
     """
-    return _request(
-        "/desktop/sessions",
-        method="POST",
-        body={"taskId": task_id, "plannedMinutes": planned_minutes},
-    )["session"]
+    body: dict = {"taskId": task_id, "plannedMinutes": planned_minutes}
+    if session_id is not None:
+        body["sessionId"] = session_id
+    if date is not None:
+        body["date"] = date
+    if focus_text is not None:
+        body["focusText"] = focus_text
+    if start_at is not None:
+        body["startAt"] = start_at
+    return _request("/desktop/sessions", method="POST", body=body)["session"]
 
 
 def mark_missed(task_id: str, planned_minutes: int) -> None:
     """Record today as deliberately not done, with nothing planned yet.
 
-    Two calls, because skipping is addressed by session id and a day nobody
-    committed to has no session to name. `plannedMinutes` is what the day was
-    asking for, so the record says "wanted 53m, did none" rather than
-    inventing a commitment. Planning is idempotent, so a retry after a failed
-    skip revises the same row instead of piling up; if the skip half fails the
-    day is left merely planned, which the panel shows and the session row's own
-    skip button can finish.
+    Two calls: plan_session now always appends, so this creates a fresh item
+    and immediately skips it rather than revising anything. `plannedMinutes`
+    is what the day was asking for, so the record says "wanted 53m, did none"
+    rather than inventing a commitment.
     """
     skip_session(plan_session(task_id, planned_minutes)["id"])
 
 
-def complete_session(session_id: str, actual_minutes: Optional[int] = None) -> None:
+def complete_session(session_id: str, actual_minutes: Optional[int] = None) -> SessionRow:
     """Close a session out; omitting the minutes credits what was committed to."""
     body = {} if actual_minutes is None else {"actualMinutes": actual_minutes}
-    _request(f"/desktop/sessions/{session_id}/complete", method="POST", body=body)
+    return _request(f"/desktop/sessions/{session_id}/complete", method="POST", body=body)["session"]
 
 
-def skip_session(session_id: str) -> None:
-    """A deliberate pass, which does not count against the month's pace."""
-    _request(f"/desktop/sessions/{session_id}/skip", method="POST")
+def skip_session(session_id: str) -> SessionRow:
+    """A deliberate pass — the work was consciously not done. Excluded from
+    the month's pace numerator, but distinct from cancel: the plan itself
+    was still the right one."""
+    return _request(f"/desktop/sessions/{session_id}/skip", method="POST")["session"]
+
+
+def cancel_session(session_id: str) -> SessionRow:
+    """Remove a still-planned item because the plan changed — wrong pick,
+    task de-prioritized — not because the work was skipped. Only valid while
+    the item is still "planned"."""
+    return _request(f"/desktop/sessions/{session_id}/cancel", method="POST")["session"]
 
 
 def set_routine_target(task_id: str, monthly_target_minutes: Optional[int]) -> None:

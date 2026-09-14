@@ -108,69 +108,54 @@ token (never the worker's full BFF secret):
 
 - `persona-tasks-widget/` is the primary day-to-day surface: a small
   always-visible GTK3 layer-shell panel (Fabric), floating top-right on
-  every output. `Routines` leads, then task **status** — `In progress`, then a
-  collapsible `Open` — with Start/Stop and Complete buttons right on it
-  (view-and-act only for now — quick-add is temporarily removed from the
-  widget; use the webapp/chat to create tasks). `▶` moves a task to
-  in-progress, `⏸` moves it back; both write through to the task's Notion
-  `Status`.
+  every output. It is a **Today execution surface**, not a task manager —
+  the header reads `TODAY · 3h15 · 4` and the body renders `today.sessions`
+  directly (Today Plan v1: a task can carry several sessions on the same day
+  now, ordered by `position`), not something derived by walking every task.
 
-  **Every block's third line is today's minutes**, not a schedule. Duration
-  chips (`30m` `1h` `2h` `⋯`) commit part of today to that task, on ordinary
-  tasks as much as on routines — deciding what today holds is the thing done
-  every morning, and having one control for both kinds of work is one habit
-  rather than two. This replaced the old due-time-plus-snooze row, so **snooze
-  is gone from the panel**; the deadline itself was not lost, it moved up into
-  the block's head (`2d late`, in red when overdue) where it costs no room,
-  and each section header still carries its `N overdue` badge. The schedule
-  also still orders tasks inside each section (overdue → today → future →
-  undated). (Before this, sections *were*
-  the schedule, which silently equated "scheduled" with "in progress" —
-  these tasks carry a real status, so it is read rather than inferred.) A
-  task with subtasks renders as one block — ticket key, `work`/`personal`, a
-  subtask meter (`●●○ 2/3`), then its next subtask indented beneath, which is
-  the row that carries the ✓; the parent's own ✓ stays inert until its
-  subtasks are done. Subtasks never appear as top-level rows. The footer's
-  `synced Nm ago` turns red when polling fails, so a stale list is never
-  mistaken for an empty one.
+  **NEXT** is the first still-planned item, shown in full — focus text,
+  parent task, duration, time if one was set — with `✓` (done), `⊘` (skip
+  today) and `···` (Replan / Remove) right on it. **LATER** is the rest of
+  today's planned items in order, same three actions, lighter weight.
+  Resolved items (done/skipped) sit in a **DONE** list beneath, as a record,
+  not a prompt. **NEEDS ATTENTION** is the reason to plan something: routines
+  not yet touched today (with a one-click `+suggested` chip, still true to
+  the pace's own arithmetic, plus `⊘` to record a deliberate miss) and
+  due/overdue tasks with nothing planned yet (a `+` that opens the composer).
+  A small **N unfinished from yesterday** banner, when present, expands to
+  `+ today` (re-plans it for today and cancels the stale one) or `⊘` (mark
+  yesterday's leftover skipped) per item — nothing carries forward on its own.
 
-  **Routines** are tasks pursued at a rate per month (a `Monthly Target (h)`
-  in Notion) rather than finished once, and they get their own section
-  because the actions that suit them are not the ones that suit a dated
-  task: the ✓ on a task block completes the *task*, which for a routine
-  would mean finishing it forever, and the snooze chips push a `dueAt` onto
-  something that has none by design. So a routine block shows its month
-  instead of a deadline — `behind 3h40m · 1h/20h`, `day 7/30` — with
-  the same duration chips every other block has. Exactly one chip is lit, and
-  it always means *this is what today is set to*; only when nothing is set does
-  the highlight fall on the pace's suggestion, which is then the obvious click.
-  (Lighting the suggestion while a different amount was already planned made
-  the row contradict the line under it — "30m planned today" beneath a lit-up
-  53m reads as though the 53m had been chosen.) The suggestion still leads the
-  row when it is not one of the fixed options, so it stays one click away
-  either way. Today's session is the actionable line indented
-  beneath, the same way a subtask is: `1h planned today` with a ✓ that
-  credits those minutes and a `⊘` that skips the day deliberately — a
-  deliberate skip does not count against the month, whereas letting the day
-  pass silently does. `N behind this month` under the section header is the
-  only signal a routine can produce, having no deadline to go overdue
-  against, so it stays visible without hovering. `⟳` on **any** block — routine
-  or not — opens an hours-per-month picker, which is the only way outside chat
-  to make a task a routine; setting a target also starts the task, since a
-  routine only reaches this panel while it is `in_progress`, and clearing one
-  leaves the task running (no longer measuring something monthly is not the
-  same as no longer doing it). Both chip rows end in `⋯`, which swaps them for
-  a text field — minutes today (`90`, `1h30`, `45m`) or hours per month (`20`,
-  `20.5`) — committed with Enter, cancelled with Escape, and marked red rather
-  than cleared when the value will not parse. While a field is open the 30s
-  poll keeps its data but skips the re-render, since rebuilding the widgets
-  would destroy what you were halfway through typing. Routines are exempt
-  from
-  the panel's `MAX_TASKS_SHOWN` cap and count toward the header's `NOW · N`,
-  since a routine is in progress by definition. Set
-  `PERSONA_PANEL_FIXTURE=some-panel.json` to render a saved
+  Everything else — the old status-grouped `In progress` / `Open` view, with
+  Start/Stop, Complete, subtask meter and next-step line — lives under a
+  collapsed **Browse tasks** toggle: the place to go looking for something to
+  add to Today, not the panel's main event. Its `+` opens the same composer
+  used everywhere a Today item gets created; routine designation
+  (`Make routine` / `Change monthly target` / `Stop measuring`) moved into
+  its `···` overflow menu, since deciding a task's monthly cadence is
+  occasional, not a per-row control any more.
+
+  **The composer** (`+` anywhere) is a focus-text field plus duration chips
+  (`30m` `45m` `1h` `90m` `2h` `…`); a chip commits immediately with whatever
+  focus text is typed, `…` swaps the chips for a free-text field (`90`,
+  `1h30`, `45m`), Escape cancels. Replan reuses the same composer with
+  `session_id` set, revising that item instead of adding a new one. Not
+  wired up yet: editing a session's time of day from the composer (it's
+  shown, not editable) and reordering Today items — the worker has no
+  reorder endpoint, only the `position` assigned on creation.
+
+  A task with subtasks still renders as one block in Browse — ticket key,
+  `work`/`personal`, a subtask meter (`●●○ 2/3`), then its next subtask
+  indented beneath, which is the row that carries the ✓; the parent's own ✓
+  stays inert until its subtasks are done. Subtasks never appear as top-level
+  rows. The footer's `synced Nm ago` turns red when polling fails, so a stale
+  list is never mistaken for an empty one. If the sessions half of the panel
+  fails to load, the header falls back to `TASKS · N` and Browse renders
+  expanded, uncollapsed, so there's still something usable on screen.
+  Set `PERSONA_PANEL_FIXTURE=some-panel.json` to render a saved
   `{"now": ..., "today": ...}` document without a worker or a token — the
-  only way to exercise this layout before any routine exists. Toggle
+  only way to exercise a layout (multiple sessions on one task, a missed-
+  yesterday banner) before the real data produces it. Toggle
   show/hide with `Mod+Shift+T` or by left-clicking `custom/persona-tasks` in
   Waybar — both send `SIGUSR1` to the running widget process via
   `persona-tasks-widget-toggle`; the systemd service itself keeps running,

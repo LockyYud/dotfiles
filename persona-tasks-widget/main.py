@@ -8,24 +8,32 @@ extension, using the same desktop token and config.env.
 Toggled on/off by sending SIGUSR1 to this process — see
 persona-tasks-widget-toggle, wired to Waybar's left-click and Mod+Shift+T.
 
-Grouping model — sections are the task's STATUS, not its schedule. The
-worker still returns schedule buckets (overdue/today/future/unscheduled),
-because the daily briefing and the web list group that way; here they are
-flattened back into one list and re-grouped as "In progress" then "Open",
-so the panel answers "what am I working on" before "what is late". The
-schedule has not been thrown away: it orders the tasks inside each section
-(overdue first, then today, then future, then undated) and every block still
-carries its own red "overdue by 2h" line.
+Information architecture (Today Plan v1) — the widget is a TODAY EXECUTION
+SURFACE, not a task manager. TODAY is the first, primary section: it renders
+`today.sessions` directly, ordered by `position`, not something derived from
+walking every task. A task can carry several Today items on the same day now
+(Today Plan v1 dropped the old one-session-per-task-per-day assumption), so
+grouping here is by *session*, never by task.
 
-An earlier version had no status axis at all — a scheduled task was treated
-as in-progress and an unscheduled one as open. That inferred a status these
-tasks already carry, and got it wrong in both directions.
+  NEXT           the first still-planned item — not "current"/"running":
+                 the domain has no started/running session, so this is only
+                 the next thing up, not a claim about what you're doing.
+  LATER          the rest of today's planned items, in position order.
+  NEEDS ATTENTION routines behind pace, and due/overdue tasks, that have
+                 nothing planned for today yet — the reason to open the
+                 composer, not a second task list.
+  Browse tasks   In progress / Open, collapsed by default. This is the old
+                 status-grouped view, kept as the place to go looking for
+                 something to add to Today, not the panel's main event.
 
-Layout model — a task with subtasks renders as ONE block, not as sibling
-rows: the parent is context (ticket badge, title, subtask meter) and its
-nextStep is the actionable line beneath it, tied together by a shared
-priority-colored left border. Subtasks therefore never appear as top-level
-rows; anything carrying parentTaskId is filtered out of the sections.
+A task with subtasks still renders as ONE block in Browse: the parent is
+context (ticket badge, title, subtask meter) and its nextStep is the
+actionable line beneath it. Subtasks never appear as top-level rows; anything
+carrying parentTaskId is filtered out.
+
+Deliberately out of scope for this pass: dragging Today items to reorder
+(the worker has no reorder endpoint yet — only `position` as assigned on
+create) and editing a session's `startAt` from the composer (view-only here).
 """
 
 import re
@@ -34,6 +42,7 @@ import sys
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import NamedTuple, Optional
 
 import gi
 
@@ -74,26 +83,28 @@ TITLE_CLAMP_CHARS = 80
 # and a proportional bar reads better.
 PIP_MAX_TOTAL = 6
 METER_BAR_WIDTH = 64
-# Slightly longer than the revealer's own 140ms slide, so the height is read
-# after the transition has settled.
 
-# Durations offered for a routine's day. The pace's own suggestion is added in
-# front of these at render time, so the common case is one click on a number
-# that already accounts for what is left and how much of the month remains.
-PLAN_OPTIONS = [("30m", 30), ("1h", 60), ("2h", 120)]
+# Durations offered in the Today composer and for a routine's quick-add chip.
+# The pace's own suggestion is added in front of these at render time for a
+# routine, so the common case is one click on a number that already accounts
+# for what is left and how much of the month remains.
+PLAN_OPTIONS = [("30m", 30), ("45m", 45), ("1h", 60), ("90m", 90), ("2h", 120)]
 # Monthly targets offered when designating a routine. Hours, because that is
 # the unit the target is thought in ("20 hours of English a month") even though
 # everything downstream stores minutes.
 MONTHLY_TARGET_OPTIONS = [("5h", 5 * 60), ("10h", 10 * 60), ("20h", 20 * 60), ("40h", 40 * 60)]
 PRIORITY_CLASSES = {"urgent", "high", "medium", "low"}
+# How many due/overdue tasks (beyond routines) Needs Attention will surface.
+# It is a nudge toward planning today, not a second copy of the backlog.
+MAX_ATTENTION_TASKS = 5
 
 STATUS_IN_PROGRESS = "in_progress"
 STATUS_OPEN = "open"
-# Section order is the whole point of the status grouping: what you are
-# already working on comes before what you could pick up. The worker never
-# returns done/cancelled tasks, so these two cover everything; anything with
-# an unrecognised status is treated as open rather than dropped, so a new
-# status added upstream degrades to "visible" instead of "invisible".
+# Section order in Browse tasks: what's already started comes before what
+# could be picked up. The worker never returns done/cancelled tasks, so these
+# two cover everything; anything with an unrecognised status is treated as
+# open rather than dropped, so a new status added upstream degrades to
+# "visible" instead of "invisible".
 STATUS_SECTIONS = [
     (STATUS_IN_PROGRESS, "In progress", "in-progress"),
     (STATUS_OPEN, "Open", "open"),
@@ -153,6 +164,11 @@ def relative_sync_age(synced_at: datetime) -> str:
     if minutes < 60:
         return f"synced {minutes}m ago"
     return f"synced {round(minutes / 60)}h ago"
+
+
+def format_time_of_day(iso: str) -> str:
+    dt = datetime.fromisoformat(iso.replace("Z", "+00:00")).astimezone()
+    return dt.strftime("%H:%M")
 
 
 def priority_class(priority: str, prefix: str) -> str:
@@ -348,6 +364,58 @@ def apply_status_change(
     return updated_now  # type: ignore[return-value]
 
 
+# ---------------------------------------------------------------------------
+# Today Plan v1 — session-level model. A task can carry several sessions on
+# the same day now, so nothing here groups by task; everything groups by
+# session, and a task is only ever reached through the session that embeds it.
+
+
+def active_sessions(today: api_client.Today | None) -> list[api_client.SessionRow]:
+    """Every session worth showing at all — cancelled ones never render in
+    the default daily view; they were a plan that changed, not a record."""
+    if today is None:
+        return []
+    return [s for s in today["sessions"] if s["status"] != "cancelled"]
+
+
+def planned_sessions(today: api_client.Today | None) -> list[api_client.SessionRow]:
+    return sorted(
+        (s for s in active_sessions(today) if s["status"] == "planned"),
+        key=lambda s: s["position"],
+    )
+
+
+def resolved_sessions(today: api_client.Today | None) -> list[api_client.SessionRow]:
+    """Done or skipped today — kept visible as a record, not a prompt."""
+    return sorted(
+        (s for s in active_sessions(today) if s["status"] in ("done", "skipped")),
+        key=lambda s: s["position"],
+    )
+
+
+def today_task_ids(today: api_client.Today | None) -> set[str]:
+    """Tasks that already have something planned or done today — used to
+    keep Needs Attention from repeating what Today already covers."""
+    return {s["taskId"] for s in active_sessions(today) if s["status"] in ("planned", "done")}
+
+
+def today_total_minutes(today: api_client.Today | None) -> int:
+    return sum(s["plannedMinutes"] for s in planned_sessions(today))
+
+
+class EntryContext(NamedTuple):
+    """Which inline field is open, if any.
+
+    mode "plan" is the Today composer (focus text + duration chips) — adding
+    a new item when session_id is None, revising one ("Replan") when it is
+    set. mode "target" is the existing free-text monthly-target field.
+    """
+
+    task_id: str
+    mode: str  # "plan" | "target"
+    session_id: str | None = None
+
+
 class TaskWidget:
     def __init__(self) -> None:
         self.window = WaylandWindow(
@@ -361,21 +429,23 @@ class TaskWidget:
         )
         self.window.set_size_request(WINDOW_WIDTH, -1)
 
-        # The Open section is the backlog you pick from, so it starts expanded
-        # — collapsing it by default would leave the panel empty until
-        # something is in progress. Collapsed state persists for the session.
-        self.open_expanded = True
+        # Browse tasks is the backlog you go looking in, not the panel's main
+        # event — it starts collapsed, unlike Today which is always shown.
+        self.browse_expanded = False
         self._last_now: api_client.NowTasks | None = None
         # Which task's monthly-target picker is open, if any. One at a time:
         # designating a routine is a deliberate, occasional act, and letting
         # several pickers stand open would just make the panel taller.
         self._target_picker_for: str | None = None
-        # (task_id, "plan" | "target") while a free-text field is open. Chips
-        # cover the common amounts; this is for any other number.
-        self._entry_for: tuple[str, str] | None = None
+        # The open Today composer / target field, if any.
+        self._entry_for: EntryContext | None = None
+        # True while the open composer's duration chips have been swapped for
+        # a free-text field ("…") — for any length not on the fixed list.
+        self._composer_custom = False
         # Today's sessions, or None while the sessions half has never been
         # fetched successfully — the panel still draws without it.
         self._last_today: api_client.Today | None = None
+        self._missed_expanded = False
         self._last_sync: datetime | None = None
         self._failure_streak = 0
         # Set when a write (start/stop, complete, plan) is rejected. Those
@@ -385,7 +455,7 @@ class TaskWidget:
         self._write_error: str | None = None
         self.footer_label: Label | None = None
 
-        self.header_title = Label(label="NOW", style_classes="header", h_align="start", h_expand=True)
+        self.header_title = Label(label="TODAY", style_classes="header", h_align="start", h_expand=True)
         close_btn = Button(label="×", style_classes="close-btn")
         close_btn.connect("clicked", lambda _btn: self.hide())
         header_row = Box(orientation="h", spacing=8, style_classes="header-row content-inset")
@@ -454,14 +524,14 @@ class TaskWidget:
 
     def render_loading(self) -> None:
         self._clear()
-        self.header_title.set_label("NOW")
+        self.header_title.set_label("TODAY")
         self.body.add(Label(label="Loading…", style_classes="state-message", h_align="start"))
         self.body.show_all()
         GLib.idle_add(self._sync_body_height)
 
     def render_message(self, message: str, error: bool = False) -> None:
         self._clear()
-        self.header_title.set_label("NOW")
+        self.header_title.set_label("TODAY")
         classes = "state-message error" if error else "state-message"
         self.body.add(Label(label=message, style_classes=classes, h_align="start"))
         self.body.show_all()
@@ -507,92 +577,40 @@ class TaskWidget:
         else:
             self._failure_streak = 0
             self._last_sync = datetime.now(timezone.utc)
-            # Held apart from _last_now so every existing optimistic update
-            # (which rewrites NowTasks in place) keeps working untouched.
             self._last_today = panel["today"]
             # Re-rendering rebuilds every widget, which would destroy an open
-            # entry mid-keystroke. The poll's data is kept; the view catches up
-            # as soon as the field closes.
+            # entry mid-keystroke. The poll's data is kept; the view catches
+            # up as soon as the field closes.
             if self._entry_for is None:
                 self.render(panel["now"])
             else:
                 self._last_now = panel["now"]
 
+    # -- render ------------------------------------------------------------
+
     def render(self, now: api_client.NowTasks) -> None:
         self._last_now = now
         self._clear()
 
+        today = self._last_today
         grouped = group_by_status(all_tasks(now))
         in_progress = grouped[STATUS_IN_PROGRESS]
         open_tasks = grouped[STATUS_OPEN]
-        routine_tasks = routines(now)
 
-        # The header counts what you are working on, not the whole backlog:
-        # "NOW · 2" next to an Open section of 30 reads as the useful number.
-        # Routines count too — a routine is in progress by definition, and
-        # leaving them out would make this disagree with the Waybar module.
-        self.header_title.set_label(f"NOW · {len(in_progress) + len(routine_tasks)}")
-
-        # Today's plan goes first: it is the one section you act on every day,
-        # and it is short by nature. Routines are also exempt from
-        # MAX_TASKS_SHOWN — there are only ever a handful, and dropping one
-        # would hide the only signal a routine can produce.
-        if routine_tasks:
-            behind = sum(1 for task in routine_tasks if task["pace"]["status"] == "behind")
-            self.body.add(
-                self._build_section_title("Routines", "routines", len(routine_tasks), 0)
-            )
-            if behind:
-                self.body.add(
-                    Label(
-                        label=f"{behind} behind this month",
-                        style_classes="section-subnote",
-                        h_align="start",
-                    )
-                )
-            for task in routine_tasks:
-                self.body.add(self._build_routine_block(task))
-
-        shown = 0
-        for status, title, tone in STATUS_SECTIONS:
-            tasks = in_progress if status == STATUS_IN_PROGRESS else open_tasks
-            if not tasks:
-                continue
-
-            overdue_count = sum(1 for t in tasks if t.get("dueAt") and is_overdue(t["dueAt"]))
-            # Open is the backlog and can be long, so it collapses; In progress
-            # is the reason the panel exists and always stays open.
-            if status == STATUS_OPEN:
-                self.body.add(self._build_section_toggle(title, tone, len(tasks), overdue_count))
-                if not self.open_expanded:
-                    continue
-            else:
-                self.body.add(self._build_section_title(title, tone, len(tasks), overdue_count))
-
-            for task in tasks:
-                if shown >= MAX_TASKS_SHOWN:
-                    break
-                self.body.add(self._build_task_block(task))
-                shown += 1
-
-        if not in_progress and not open_tasks and not routine_tasks:
-            self.body.add(self._build_empty_state())
-
-        # Two ways a task can be missing from the list above: the local
-        # MAX_TASKS_SHOWN cap, and the worker's own per-bucket caps (which
-        # only unscheduledCount reports on). Both are surfaced rather than
-        # letting the panel imply the list is complete.
-        received = len(in_progress) + len(open_tasks)
-        hidden_by_worker = max(0, now["unscheduledCount"] - len(top_level(now["unscheduled"])))
-        hidden = max(0, received - shown) + hidden_by_worker
-        if hidden > 0 and (self.open_expanded or in_progress):
+        if today is not None:
+            self._render_today_first(now, today)
+        else:
+            # The sessions half never landed — fall back to the plain task
+            # list rather than blanking a section the panel can't fill in.
+            self.header_title.set_label(f"TASKS · {len(in_progress) + len(open_tasks)}")
             self.body.add(
                 Label(
-                    label=f"+{hidden} more not shown",
-                    style_classes="footer-note",
+                    label="Today plan unavailable",
+                    style_classes="state-message",
                     h_align="start",
                 )
             )
+            self._render_browse(now, in_progress, open_tasks, force_expanded=True)
 
         self.footer_label = Label(label="", style_classes="sync-note", h_align="start")
         self.body.add(self.footer_label)
@@ -602,6 +620,122 @@ class TaskWidget:
         # Deferred: preferred-height only reflects the new children after the
         # pending resize has been processed.
         GLib.idle_add(self._sync_body_height)
+
+    def _render_today_first(self, now: api_client.NowTasks, today: api_client.Today) -> None:
+        planned = planned_sessions(today)
+        resolved = resolved_sessions(today)
+        total_minutes = today_total_minutes(today)
+        count = len(planned) + len(resolved)
+
+        self.header_title.set_label(
+            f"TODAY · {fmt_minutes(total_minutes)} · {count}" if count else "TODAY"
+        )
+
+        if today["missedYesterday"]:
+            self.body.add(self._build_missed_banner(today["missedYesterday"]))
+
+        if planned:
+            self.body.add(self._section_label("NEXT"))
+            self.body.add(self._build_today_item(planned[0], primary=True))
+
+            if len(planned) > 1:
+                self.body.add(self._section_label("LATER"))
+                for session in planned[1:]:
+                    self.body.add(self._build_today_item(session, primary=False))
+        elif not resolved:
+            self.body.add(self._build_empty_today_state())
+
+        if resolved:
+            self.body.add(self._section_label("DONE"))
+            for session in resolved:
+                self.body.add(self._build_resolved_row(session))
+
+        attention_routines, attention_tasks = self._attention_items(now, today)
+        if attention_routines or attention_tasks:
+            self.body.add(self._section_label("NEEDS ATTENTION"))
+            for task in attention_routines:
+                self.body.add(self._build_attention_routine_row(task))
+            for task in attention_tasks:
+                self.body.add(self._build_attention_task_row(task))
+
+        grouped = group_by_status(all_tasks(now))
+        self._render_browse(now, grouped[STATUS_IN_PROGRESS], grouped[STATUS_OPEN])
+
+    def _attention_items(
+        self, now: api_client.NowTasks, today: api_client.Today
+    ) -> tuple[list[api_client.TaskRow], list[api_client.TaskRow]]:
+        """Routines slipping behind, and due/overdue tasks, that have nothing
+        planned or done for today yet — the reason to open the composer."""
+        covered = today_task_ids(today)
+
+        # Any active routine not yet planned or done today is a candidate for
+        # Needs Attention — "unplanned" is the trigger; being behind on the
+        # month is what the row's own text then makes urgent-looking.
+        attention_routines = [task for task in routines(now) if task["id"] not in covered]
+
+        due_candidates: list[api_client.TaskRow] = []
+        seen: set[str] = set()
+        for bucket in ("overdue", "today"):
+            for task in top_level(now.get(bucket) or []):
+                if task["id"] in covered or task["id"] in seen or task.get("pace"):
+                    continue
+                seen.add(task["id"])
+                due_candidates.append(task)
+        attention_tasks = due_candidates[:MAX_ATTENTION_TASKS]
+
+        return attention_routines, attention_tasks
+
+    def _render_browse(
+        self,
+        now: api_client.NowTasks,
+        in_progress: list[api_client.TaskRow],
+        open_tasks: list[api_client.TaskRow],
+        force_expanded: bool = False,
+    ) -> None:
+        expanded = force_expanded or self.browse_expanded
+        total = len(in_progress) + len(open_tasks)
+
+        if not force_expanded:
+            toggle = Button(
+                child=self._section_header_content("Browse tasks", total, 0, arrow=expanded),
+                style_classes="section-title section-toggle browse",
+            )
+            toggle.connect("clicked", self._toggle_browse_expanded)
+            self.body.add(toggle)
+
+        if not expanded:
+            return
+
+        if total == 0:
+            self.body.add(
+                Label(label="Nothing else open", style_classes="footer-note", h_align="start")
+            )
+            return
+
+        shown = 0
+        for status, title, tone in STATUS_SECTIONS:
+            tasks = in_progress if status == STATUS_IN_PROGRESS else open_tasks
+            if not tasks:
+                continue
+            overdue_count = sum(1 for t in tasks if t.get("dueAt") and is_overdue(t["dueAt"]))
+            self.body.add(self._build_section_title(title, tone, len(tasks), overdue_count))
+            for task in tasks:
+                if shown >= MAX_TASKS_SHOWN:
+                    break
+                self.body.add(self._build_browse_task_block(task))
+                shown += 1
+
+        hidden_by_worker = max(0, now["unscheduledCount"] - len(top_level(now["unscheduled"])))
+        hidden = max(0, total - shown) + hidden_by_worker
+        if hidden > 0:
+            self.body.add(
+                Label(label=f"+{hidden} more not shown", style_classes="footer-note", h_align="start")
+            )
+
+    def _toggle_browse_expanded(self, *_args) -> None:
+        self.browse_expanded = not self.browse_expanded
+        if self._last_now is not None:
+            self.render(self._last_now)
 
     def _refresh_footer(self) -> None:
         if self.footer_label is None:
@@ -620,26 +754,32 @@ class TaskWidget:
                 relative_sync_age(self._last_sync) if self._last_sync else ""
             )
 
-    def _build_empty_state(self) -> Box:
+    def _build_empty_today_state(self) -> Box:
         row = Box(orientation="h", spacing=10, style_classes="empty-state")
         row.add(Label(label="✓", style_classes="empty-check", v_align="start"))
         text = Box(orientation="v", spacing=1)
-        text.add(Label(label="All clear", style_classes="empty-title", h_align="start"))
-        text.add(Label(label="Nothing due right now", style_classes="empty-subtitle", h_align="start"))
+        text.add(Label(label="Nothing planned yet", style_classes="empty-title", h_align="start"))
+        text.add(
+            Label(
+                label="Add something from Browse tasks or Needs attention",
+                style_classes="empty-subtitle",
+                h_align="start",
+            )
+        )
         row.add(text)
         return row
 
-    def _section_header_content(self, title: str, count: int, overdue_count: int) -> Box:
-        """Section label plus its counts.
+    def _section_label(self, title: str) -> Label:
+        return Label(label=title, style_classes="section-label today-label", h_align="start")
 
-        The overdue tally lives here because status is now the grouping axis:
-        without it you would have to scroll a long Open section to find out
-        anything in it is late.
-        """
+    def _section_header_content(
+        self, title: str, count: int | None, overdue_count: int, arrow: bool | None = None
+    ) -> Box:
+        label = f"{title} · {count}" if count is not None else title
         content = Box(orientation="h", spacing=6)
         content.add(
             Label(
-                label=f"{title} · {count}",
+                label=label,
                 style_classes="section-label",
                 h_align="start",
                 h_expand=True,
@@ -649,6 +789,8 @@ class TaskWidget:
             content.add(
                 Label(label=f"{overdue_count} overdue", style_classes="section-overdue-badge")
             )
+        if arrow is not None:
+            content.add(Label(label="▴" if arrow else "▾", style_classes="section-arrow"))
         return content
 
     def _build_section_title(self, title: str, tone: str, count: int, overdue_count: int) -> Box:
@@ -656,25 +798,339 @@ class TaskWidget:
         row.add(self._section_header_content(title, count, overdue_count))
         return row
 
-    def _build_section_toggle(self, title: str, tone: str, count: int, overdue_count: int) -> Button:
-        content = self._section_header_content(title, count, overdue_count)
-        content.add(
-            Label(label="▴" if self.open_expanded else "▾", style_classes="section-arrow")
-        )
-        toggle = Button(child=content, style_classes=f"section-title section-toggle {tone}")
-        toggle.connect("clicked", self._toggle_open_expanded)
-        return toggle
+    # -- Today items ---------------------------------------------------
 
-    def _toggle_open_expanded(self, *_args) -> None:
-        self.open_expanded = not self.open_expanded
+    def _session_by_id(self, session_id: str) -> api_client.SessionRow | None:
+        if self._last_today is None:
+            return None
+        for session in self._last_today["sessions"]:
+            if session["id"] == session_id:
+                return session
+        return None
+
+    def _build_today_item(self, session: api_client.SessionRow, primary: bool) -> Box:
+        task = session["task"]
+        focus_text = session.get("focusText") or clamp_title(task["title"])
+        ticket_key, bare_title = split_ticket_key(task["title"])
+        parent_label = ticket_key or bare_title
+
+        tone = priority_class(task["priority"], "accent")
+        row = Box(
+            orientation="v",
+            spacing=1,
+            style_classes=f"today-item {tone}" + (" primary" if primary else " compact"),
+        )
+
+        head = Box(orientation="h", spacing=6)
+        head.add(
+            Label(
+                label=focus_text,
+                style_classes="task-title" if primary else "step-title",
+                h_align="start",
+                h_expand=True,
+                ellipsization="end",
+            )
+        )
+        head.add(self._build_session_complete_button(session))
+        head.add(self._build_session_skip_button(session))
+        head.add(self._build_session_overflow_button(session))
+        row.add(head)
+
+        meta_bits = [parent_label, fmt_minutes(session["plannedMinutes"])]
+        if session.get("startAt"):
+            meta_bits.append(format_time_of_day(session["startAt"]))
+        row.add(
+            Label(
+                label=" · ".join(meta_bits),
+                style_classes="task-meta",
+                h_align="start",
+            )
+        )
+
+        if self._entry_for == EntryContext(task["id"], "plan", session["id"]):
+            row.add(self._build_composer(task, EntryContext(task["id"], "plan", session["id"])))
+
+        return row
+
+    def _build_resolved_row(self, session: api_client.SessionRow) -> Box:
+        task = session["task"]
+        focus_text = session.get("focusText") or clamp_title(task["title"])
+        if session["status"] == "done":
+            actual = session["actualMinutes"] or session["plannedMinutes"]
+            text = f"{focus_text} · {fmt_minutes(actual)} done"
+        else:
+            text = f"{focus_text} · skipped"
+        return Label(
+            label=text,
+            style_classes="step-title done" if session["status"] == "done" else "step-title",
+            h_align="start",
+        )
+
+    def _build_session_complete_button(self, session: api_client.SessionRow) -> Button:
+        btn = Button(label="✓", style_classes="complete-btn today-action", tooltip_text="Done")
+        btn.connect(
+            "clicked", lambda _btn, sid=session["id"]: self._on_complete_session(sid)
+        )
+        return btn
+
+    def _build_session_skip_button(self, session: api_client.SessionRow) -> Button:
+        btn = Button(label="⊘", style_classes="plan-btn today-action", tooltip_text="Skip today")
+        btn.connect("clicked", lambda _btn, sid=session["id"]: self._on_skip_session(sid))
+        return btn
+
+    def _build_session_overflow_button(self, session: api_client.SessionRow) -> Button:
+        btn = Button(label="···", style_classes="plan-btn today-action", tooltip_text="More")
+        btn.connect(
+            "clicked",
+            lambda _btn, s=session: self._popup_menu(
+                btn,
+                [
+                    ("Replan", lambda s=s: self._open_replan(s)),
+                    ("Remove", lambda s=s: self._on_cancel_session(s["id"])),
+                ],
+            ),
+        )
+        return btn
+
+    def _open_replan(self, session: api_client.SessionRow) -> None:
+        self._entry_for = EntryContext(session["taskId"], "plan", session["id"])
+        self._composer_custom = False
         if self._last_now is not None:
             self.render(self._last_now)
+
+    # -- Needs attention -------------------------------------------------
+
+    def _build_attention_routine_row(self, task: api_client.TaskRow) -> Box:
+        pace = task["pace"]
+        row = Box(orientation="h", spacing=6, style_classes="attention-row")
+        text = Box(orientation="v", spacing=0)
+        text.add(Label(label=clamp_title(task["title"]), style_classes="task-title", h_align="start"))
+        text.add(
+            Label(
+                label=describe_pace(pace),
+                style_classes="task-meta" + (" overdue" if pace["status"] == "behind" else ""),
+                h_align="start",
+            )
+        )
+        row.add(text)
+        suggested = pace["suggestedTodayMinutes"] or PLAN_OPTIONS[0][1]
+        chip = Button(
+            label=f"+{fmt_minutes(suggested)}",
+            style_classes="plan-btn current",
+            tooltip_text=f"Plan {fmt_minutes(suggested)} today",
+        )
+        chip.connect(
+            "clicked", lambda _btn, tid=task["id"], m=suggested: self._on_plan(tid, m)
+        )
+        row.add(chip)
+        miss = Button(
+            label="⊘",
+            style_classes="plan-btn",
+            tooltip_text="Not today — recorded as a miss, not held against the month",
+        )
+        miss.connect(
+            "clicked", lambda _btn, tid=task["id"], m=suggested: self._on_miss(tid, m)
+        )
+        row.add(miss)
+        return row
+
+    def _build_attention_task_row(self, task: api_client.TaskRow) -> Box:
+        ticket_key, bare_title = split_ticket_key(task["title"])
+        due_at = task.get("dueAt")
+        row = Box(orientation="h", spacing=6, style_classes="attention-row")
+        text = Box(orientation="v", spacing=0)
+        meta_bits = [b for b in (ticket_key,) if b]
+        if due_at:
+            meta_bits.append(relative_deadline(due_at))
+        if meta_bits:
+            text.add(
+                Label(
+                    label=" · ".join(meta_bits),
+                    style_classes="task-meta" + (" overdue" if due_at and is_overdue(due_at) else ""),
+                    h_align="start",
+                )
+            )
+        text.add(Label(label=clamp_title(bare_title), style_classes="task-title", h_align="start"))
+        row.add(text)
+
+        if self._entry_for == EntryContext(task["id"], "plan", None):
+            row.add(self._build_composer(task, EntryContext(task["id"], "plan", None)))
+        else:
+            add_btn = Button(label="+", style_classes="plan-btn today-action", tooltip_text="Add to Today")
+            add_btn.connect("clicked", lambda _btn, tid=task["id"]: self._open_composer(tid))
+            row.add(add_btn)
+        return row
+
+    def _build_missed_banner(self, missed: list[api_client.SessionRow]) -> Box:
+        outer = Box(orientation="v", spacing=4, style_classes="missed-banner")
+        toggle = Button(
+            child=self._section_header_content(
+                f"{len(missed)} unfinished from yesterday", None, 0, arrow=self._missed_expanded
+            ),
+            style_classes="section-title section-toggle missed",
+        )
+        toggle.connect("clicked", self._toggle_missed_expanded)
+        outer.add(toggle)
+
+        if self._missed_expanded:
+            for session in missed:
+                outer.add(self._build_missed_row(session))
+        return outer
+
+    def _toggle_missed_expanded(self, *_args) -> None:
+        self._missed_expanded = not self._missed_expanded
+        if self._last_now is not None:
+            self.render(self._last_now)
+
+    def _build_missed_row(self, session: api_client.SessionRow) -> Box:
+        task = session["task"]
+        focus_text = session.get("focusText") or clamp_title(task["title"])
+        row = Box(orientation="h", spacing=6, style_classes="attention-row")
+        row.add(
+            Label(
+                label=f"{focus_text} · {fmt_minutes(session['plannedMinutes'])}",
+                style_classes="task-meta",
+                h_align="start",
+                h_expand=True,
+            )
+        )
+        add_btn = Button(label="+ today", style_classes="plan-btn", tooltip_text="Carry forward to today")
+        add_btn.connect(
+            "clicked",
+            lambda _btn, s=session: self._on_carry_forward(s),
+        )
+        row.add(add_btn)
+        skip_btn = Button(label="⊘", style_classes="plan-btn", tooltip_text="Leave it — mark yesterday as skipped")
+        skip_btn.connect("clicked", lambda _btn, sid=session["id"]: self._on_skip_session(sid))
+        row.add(skip_btn)
+        return row
+
+    # -- composer ---------------------------------------------------------
+
+    def _open_composer(self, task_id: str) -> None:
+        self._entry_for = EntryContext(task_id, "plan", None)
+        self._composer_custom = False
+        if self._last_now is not None:
+            self.render(self._last_now)
+
+    def _close_entry(self) -> None:
+        self._entry_for = None
+        self._composer_custom = False
+        if self._last_now is not None:
+            self.render(self._last_now)
+
+    def _build_composer(self, task: api_client.TaskRow, ctx: EntryContext) -> Box:
+        """Focus text plus duration chips. Clicking a chip commits
+        immediately with whatever's in the focus field — there's no separate
+        "Add" step, matching how every other chip in this panel works.
+        Editing the item's time of day isn't wired up yet (view-only on the
+        row above); the worker has no reorder endpoint either, so the item
+        lands wherever `position` puts it."""
+        session = self._session_by_id(ctx.session_id) if ctx.session_id else None
+        initial_focus = (session.get("focusText") if session else None) or ""
+
+        box = Box(orientation="v", spacing=4, style_classes="composer")
+        entry = Entry(
+            text=initial_focus,
+            placeholder=clamp_title(split_ticket_key(task["title"])[1]),
+            style_classes="inline-entry",
+            h_expand=True,
+        )
+
+        def on_key(_widget, event) -> bool:
+            if event.keyval == Gdk.KEY_Escape:
+                self._close_entry()
+                return True
+            return False
+
+        entry.connect("key-press-event", on_key)
+        box.add(entry)
+
+        if self._composer_custom:
+            box.add(self._build_custom_duration_row(task, ctx, entry))
+        else:
+            chips = Box(orientation="h", spacing=6)
+            options = list(PLAN_OPTIONS)
+            if session and session["plannedMinutes"] not in [m for _, m in options]:
+                options.insert(0, (fmt_minutes(session["plannedMinutes"]), session["plannedMinutes"]))
+            for label_text, minutes in options:
+                chip = Button(label=label_text, style_classes="plan-btn", tooltip_text=f"{fmt_minutes(minutes)}")
+                chip.connect(
+                    "clicked",
+                    lambda _btn, m=minutes: self._commit_composer(task["id"], ctx, entry.get_text(), m),
+                )
+                chips.add(chip)
+            more = Button(label="…", style_classes="plan-btn", tooltip_text="Type any length — 90, 1h30, 45m")
+            more.connect("clicked", lambda _btn: self._open_custom_duration())
+            chips.add(more)
+            cancel = Button(label="✕", style_classes="plan-btn", tooltip_text="Cancel (Esc)")
+            cancel.connect("clicked", lambda _btn: self._close_entry())
+            chips.add(cancel)
+            box.add(chips)
+            GLib.idle_add(entry.grab_focus)
+        return box
+
+    def _open_custom_duration(self) -> None:
+        self._composer_custom = True
+        if self._last_now is not None:
+            self.render(self._last_now)
+
+    def _build_custom_duration_row(
+        self, task: api_client.TaskRow, ctx: EntryContext, focus_entry: Entry
+    ) -> Box:
+        row = Box(orientation="h", spacing=6)
+        duration_entry = Entry(
+            placeholder="90 or 1h30", style_classes="inline-entry", h_expand=True
+        )
+
+        def commit(_widget=None) -> None:
+            minutes = parse_duration_minutes(duration_entry.get_text())
+            if minutes is None:
+                duration_entry.add_style_class("invalid")
+                return
+            self._commit_composer(task["id"], ctx, focus_entry.get_text(), minutes)
+
+        def on_key(_widget, event) -> bool:
+            if event.keyval == Gdk.KEY_Escape:
+                self._close_entry()
+                return True
+            duration_entry.remove_style_class("invalid")
+            return False
+
+        duration_entry.connect("activate", commit)
+        duration_entry.connect("key-press-event", on_key)
+        row.add(duration_entry)
+        ok = Button(label="✓", style_classes="plan-btn current", tooltip_text="Set")
+        ok.connect("clicked", lambda _btn: commit())
+        row.add(ok)
+        cancel = Button(label="✕", style_classes="plan-btn", tooltip_text="Cancel (Esc)")
+        cancel.connect("clicked", lambda _btn: self._close_entry())
+        row.add(cancel)
+        GLib.idle_add(duration_entry.grab_focus)
+        return row
+
+    def _commit_composer(self, task_id: str, ctx: EntryContext, focus_text: str, minutes: int) -> None:
+        text = focus_text.strip() or None
+        self._entry_for = None
+        self._composer_custom = False
+        if ctx.session_id is not None:
+            self._write(
+                lambda: api_client.plan_session(
+                    task_id, minutes, session_id=ctx.session_id, focus_text=text
+                ),
+                "Replan",
+            )
+        else:
+            self._write(
+                lambda: api_client.plan_session(task_id, minutes, focus_text=text), "Add"
+            )
+
+    # -- Browse tasks -----------------------------------------------------
 
     def _build_meter(self, progress: api_client.Progress) -> Box:
         """Subtask roll-up. Pips stay countable up to PIP_MAX_TOTAL; past that
         a proportional bar carries the ratio better than a row of dots. The
-        done/total fraction is always spelled out, so the exact number never
-        depends on reading the graphic."""
+        done/total fraction is always spelled out beside it. """
         done = max(0, min(progress["done"], progress["total"]))
         total = progress["total"]
         meter = Box(orientation="h", spacing=6, style_classes="meter", v_align="center")
@@ -704,9 +1160,6 @@ class TaskWidget:
     ) -> Button:
         remaining = progress["total"] - progress["done"] if progress else 0
         if remaining > 0:
-            # A parent is a container: closing it while subtasks are open would
-            # silently orphan them. Tick the subtask instead and the meter here
-            # advances on its own.
             plural = "" if remaining == 1 else "s"
             btn = Button(
                 label="✓",
@@ -721,12 +1174,6 @@ class TaskWidget:
         return btn
 
     def _build_status_button(self, task: api_client.TaskRow) -> Button:
-        """The open <-> in_progress toggle.
-
-        Both directions are one click, because a mis-click here writes through
-        to Notion — an unreversible "start" would be a trap. The two share a
-        slot so a block's width never depends on its status.
-        """
         if normalized_status(task) == STATUS_IN_PROGRESS:
             btn = Button(
                 label="⏸",
@@ -748,7 +1195,11 @@ class TaskWidget:
         )
         return btn
 
-    def _build_task_block(self, task: api_client.TaskRow) -> EventBox:
+    def _build_browse_task_block(self, task: api_client.TaskRow) -> EventBox:
+        """Browse's version of a task block — identity, subtask meter, next
+        step, and "+ Today" to plan it, with routine/overflow actions tucked
+        behind ···. No duration chips here any more: deciding today's minutes
+        happens in the Today composer, not on every backlog row."""
         progress = task.get("progress")
         if progress and progress["total"] <= 0:
             progress = None
@@ -766,8 +1217,6 @@ class TaskWidget:
             style_classes=f"task-block {priority_class(task['priority'], 'accent')} {status_class}",
         )
 
-        # Line 1 — identity and progress, both scannable without reading the
-        # title: ticket key, work/personal, subtask meter.
         head = Box(orientation="h", spacing=6, style_classes="task-head")
         if ticket_key:
             head.add(Label(label=ticket_key, style_classes="ticket-badge"))
@@ -780,10 +1229,6 @@ class TaskWidget:
                 ellipsization="end",
             )
         )
-        # The deadline lives here now that the schedule row is gone. It is
-        # information, not a control, and the head is where the block's other
-        # scannable facts already sit — so nothing about "what is late" was
-        # lost when the row it used to occupy became today's minutes.
         if due_at:
             head.add(
                 Label(
@@ -795,8 +1240,6 @@ class TaskWidget:
             head.add(self._build_meter(progress))
         block.add(head)
 
-        # Line 2 — the title itself, wrapped rather than ellipsized so a long
-        # Notion title stays readable, and the complete action beside it.
         title_row = Box(orientation="h", spacing=6)
         title_row.add(
             Label(
@@ -809,36 +1252,33 @@ class TaskWidget:
                 size=(TITLE_WIDTH, -1),
             )
         )
-        title_row.add(self._build_routine_toggle(task))
         title_row.add(self._build_status_button(task))
-        title_row.add(self._build_complete_button(task, progress))
+        add_btn = Button(label="+", style_classes="status-btn", tooltip_text="Add to Today")
+        add_btn.connect("clicked", lambda _btn, tid=task["id"]: self._open_composer(tid))
+        title_row.add(add_btn)
+        title_row.add(self._build_browse_overflow_button(task, progress))
         block.add(title_row)
 
-        # Line 3 — today. Always open: it is the control the panel exists for,
-        # and hiding it behind a hover is what made it undiscoverable when the
-        # chips were first added.
-        block.add(self._build_today_row(task))
-
-        session = self._session_for(task["id"])
-        if session is not None:
-            block.add(self._build_session_row(session))
+        if self._entry_for == EntryContext(task["id"], "plan", None):
+            block.add(self._build_composer(task, EntryContext(task["id"], "plan", None)))
 
         if self._target_picker_for == task["id"]:
             block.add(
-                self._build_inline_entry(task, "target")
-                if self._entry_for == (task["id"], "target")
+                self._build_target_entry(task)
+                if self._entry_for == EntryContext(task["id"], "target")
                 else self._build_target_picker(task)
             )
 
-        # Line 4 — the subtask you'd actually act on next. Indented under the
-        # parent and sharing its accent border, so the two read as one unit.
         next_step = task.get("nextStep")
         if next_step:
             step_row = Box(orientation="h", spacing=6, style_classes="next-step-row")
             step_row.add(Label(label="└", style_classes="step-connector", v_align="start"))
+            label = f"next: {next_step['title']}"
+            if progress:
+                label += f" · {progress['done']}/{progress['total']}"
             step_row.add(
                 Label(
-                    label=next_step["title"],
+                    label=label,
                     style_classes="step-title",
                     h_align="start",
                     h_expand=True,
@@ -857,139 +1297,56 @@ class TaskWidget:
         )
         return hover_box
 
-    def _open_entry(self, task_id: str, mode: str) -> None:
-        self._entry_for = (task_id, mode)
-        if self._last_now is not None:
-            self.render(self._last_now)
-
-    def _close_entry(self) -> None:
-        self._entry_for = None
-        if self._last_now is not None:
-            self.render(self._last_now)
-
-    def _build_more_chip(self, task_id: str, mode: str) -> Button:
-        """Opens the free-text field. Chips are the fast path for the amounts
-        you reach for most; this is the way to say any other number."""
-        chip = Button(
-            label="⋯",
-            style_classes="plan-btn",
-            tooltip_text=(
-                "Type any number of hours per month"
-                if mode == "target"
-                else "Type any length — 90, 1h30, 45m"
-            ),
-        )
-        chip.connect("clicked", lambda _btn, t=task_id, m=mode: self._open_entry(t, m))
-        return chip
-
-    def _build_inline_entry(self, task: api_client.TaskRow, mode: str) -> Box:
-        """A one-line field replacing the chips, committed with Enter.
-
-        Escape closes it. So does a value that will not parse, except that the
-        field stays open and marked instead — losing what was typed because a
-        stray character slipped in would be worse than the typo.
-        """
-        is_target = mode == "target"
-        pace = task.get("pace")
-        if is_target:
-            initial = f"{pace['targetMinutes'] / 60:g}" if pace else ""
-        else:
-            session = self._session_for(task["id"])
-            suggested = pace["suggestedTodayMinutes"] if pace else 0
-            initial = str(session["plannedMinutes"] if session else suggested or "")
-
-        row = Box(orientation="h", spacing=6, style_classes="inline-entry-row")
-        row.add(
-            Label(
-                label="hours/month" if is_target else "minutes today",
-                style_classes="target-picker-label",
-                h_align="start",
+    def _build_browse_overflow_button(
+        self, task: api_client.TaskRow, progress: api_client.Progress | None
+    ) -> Button:
+        is_routine = task.get("pace") is not None
+        remaining = progress["total"] - progress["done"] if progress else 0
+        items = []
+        if remaining <= 0:
+            items.append(("Complete", lambda tid=task["id"]: self._on_complete(tid)))
+        items.append(
+            (
+                "Change monthly target" if is_routine else "Make routine",
+                lambda tid=task["id"]: self._toggle_target_picker(tid),
             )
         )
-        entry = Entry(
-            text=initial,
-            placeholder="20" if is_target else "90 or 1h30",
-            style_classes="inline-entry",
-            h_expand=True,
-        )
+        if is_routine:
+            items.append(("Stop measuring monthly", lambda tid=task["id"]: self._on_set_routine(tid, None)))
 
-        def commit(_widget=None) -> None:
-            raw = entry.get_text()
-            minutes = parse_target_minutes(raw) if is_target else parse_duration_minutes(raw)
-            if minutes is None:
-                entry.add_style_class("invalid")
-                return
-            self._entry_for = None
-            if is_target:
-                self._target_picker_for = None
-                self._on_set_routine(task["id"], minutes)
-            else:
-                self._on_plan(task["id"], minutes)
-
-        def on_key(_widget, event) -> bool:
-            if event.keyval == Gdk.KEY_Escape:
-                self._close_entry()
-                return True
-            entry.remove_style_class("invalid")
-            return False
-
-        entry.connect("activate", commit)
-        entry.connect("key-press-event", on_key)
-        row.add(entry)
-
-        ok = Button(label="✓", style_classes="plan-btn current", tooltip_text="Set")
-        ok.connect("clicked", lambda _btn: commit())
-        row.add(ok)
-        cancel = Button(label="✕", style_classes="plan-btn", tooltip_text="Cancel (Esc)")
-        cancel.connect("clicked", lambda _btn: self._close_entry())
-        row.add(cancel)
-
-        # The field is opened by a click, so it has to take focus itself —
-        # idled because it does not exist on screen until this render lands.
-        GLib.idle_add(entry.grab_focus)
-        return row
-
-    def _build_today_row(self, task: api_client.TaskRow):
-        """How much of today goes to this task — on every block, not just
-        routines.
-
-        This replaced the schedule row (due time plus snooze chips). Deciding
-        what today actually holds is the thing done every morning; nudging a
-        deadline by an hour is not, and a deadline that still matters is now
-        carried in the block's head where it costs no room. The same control
-        for a routine and for an ordinary task keeps one habit rather than two.
-        """
-        session = self._session_for(task["id"])
-        typing = self._entry_for == (task["id"], "plan")
-        row = Box(orientation="h", spacing=6, style_classes="task-meta-row")
-        if typing:
-            return self._build_inline_entry(task, "plan")
-        row.add(self._plan_chips(task, session))
-        return row
-
-    def _build_routine_toggle(self, task: api_client.TaskRow) -> Button:
-        """Opens the monthly-target picker for one task.
-
-        Present on every block, routine or not, because this is the only place
-        outside chat where a task can be made into a routine — and having to
-        open a chat window to say "measure this monthly" was the whole reason
-        it moved here.
-        """
-        is_routine = task.get("pace") is not None
-        btn = Button(
-            label="⟳",
-            style_classes="status-btn" + (" started" if is_routine else ""),
-            tooltip_text=(
-                "Change the monthly target, or stop measuring it"
-                if is_routine
-                else "Make this a routine — measured in hours per month"
-            ),
-        )
-        btn.connect("clicked", lambda _btn, task_id=task["id"]: self._toggle_target_picker(task_id))
+        btn = Button(label="···", style_classes="status-btn", tooltip_text="More")
+        btn.connect("clicked", lambda _btn: self._popup_menu(btn, items))
         return btn
+
+    def _popup_menu(self, button: Gtk.Widget, items: list[tuple[str, "callable"]]) -> None:
+        menu = Gtk.Menu()
+        menu.get_style_context().add_class("panel-menu")
+        for label, callback in items:
+            item = Gtk.MenuItem(label=label)
+            item.connect("activate", lambda _item, cb=callback: cb())
+            menu.append(item)
+        menu.show_all()
+        menu.popup_at_widget(button, Gdk.Gravity.SOUTH_WEST, Gdk.Gravity.NORTH_WEST, None)
 
     def _toggle_target_picker(self, task_id: str) -> None:
         self._target_picker_for = None if self._target_picker_for == task_id else task_id
+        if self._last_now is not None:
+            self.render(self._last_now)
+
+    def _build_more_target_chip(self, task_id: str) -> Button:
+        chip = Button(
+            label="⋯",
+            style_classes="plan-btn",
+            tooltip_text="Type any number of hours per month",
+        )
+        chip.connect(
+            "clicked",
+            lambda _btn, t=task_id: self._open_target_entry(t),
+        )
+        return chip
+
+    def _open_target_entry(self, task_id: str) -> None:
+        self._entry_for = EntryContext(task_id, "target")
         if self._last_now is not None:
             self.render(self._last_now)
 
@@ -1017,7 +1374,7 @@ class TaskWidget:
                 lambda _btn, task_id=task["id"], m=minutes: self._on_set_routine(task_id, m),
             )
             row.add(chip)
-        row.add(self._build_more_chip(task["id"], "target"))
+        row.add(self._build_more_target_chip(task["id"]))
         if pace is not None:
             stop = Button(
                 label="✕",
@@ -1031,272 +1388,58 @@ class TaskWidget:
             row.add(stop)
         return row
 
-    def _session_for(self, task_id: str) -> api_client.SessionRow | None:
-        if self._last_today is None:
-            return None
-        for session in self._last_today["sessions"]:
-            if session["taskId"] == task_id:
-                return session
-        return None
+    def _build_target_entry(self, task: api_client.TaskRow) -> Box:
+        """A one-line field replacing the target chips, committed with Enter.
 
-    def _plan_chips(self, task: api_client.TaskRow, session) -> Box:
-        """Duration chips for a routine's day.
-
-        Exactly one chip is ever highlighted, and it always means the same
-        thing: *this is what today is set to* — including the ⊘ when today is
-        set to "not doing it". Only when nothing at all is set does the
-        highlight fall on the pace's suggestion, which is then the obvious
-        click. Highlighting the suggestion while a different amount was already
-        planned made the row contradict the line right below it — "30m planned
-        today" under a lit-up 53m reads as though the 53m had been chosen.
-
-        The suggestion still leads the row when it is not one of the fixed
-        options, so it stays one click away either way. Re-planning replaces
-        the commitment rather than adding to it, so these are totals, not
-        top-ups.
+        Escape closes it. So does a value that will not parse, except that
+        the field stays open and marked instead — losing what was typed
+        because a stray character slipped in would be worse than the typo.
         """
-        row = Box(orientation="h", spacing=6)
-        # Only a routine has a suggestion; every other task just gets the fixed
-        # options, with whatever is already set for today lit.
         pace = task.get("pace")
-        suggested = pace["suggestedTodayMinutes"] if pace else 0
-        # A skipped day is not a commitment, so no duration is "what today is
-        # set to" — the lit chip is the ⊘ instead, and lighting the suggestion
-        # alongside it would put two answers to the same question in one row.
-        missed = session is not None and session["status"] == "skipped"
-        planned = session["plannedMinutes"] if session is not None and not missed else None
+        initial = f"{pace['targetMinutes'] / 60:g}" if pace else ""
 
-        options = list(PLAN_OPTIONS)
-        for extra in (suggested, planned):
-            if extra and extra not in [minutes for _, minutes in options]:
-                options.insert(0, (fmt_minutes(extra), extra))
-
-        for label_text, minutes in options:
-            if missed:
-                current = False
-            elif planned is not None:
-                current = minutes == planned
-            else:
-                current = minutes == suggested and suggested > 0
-
-            if planned is not None:
-                verb = "Already set to" if current else "Change to"
-            else:
-                verb = "Plan"
-            hint = "" if planned is not None or not current else " (suggested)"
-
-            chip = Button(
-                label=label_text,
-                style_classes="plan-btn current" if current else "plan-btn",
-                tooltip_text=f"{verb} {fmt_minutes(minutes)} today{hint}",
-            )
-            chip.connect(
-                "clicked",
-                lambda _btn, task_id=task["id"], m=minutes: self._on_plan(task_id, m),
-            )
-            row.add(chip)
-        row.add(self._build_more_chip(task["id"], "plan"))
-        miss = self._build_miss_chip(task, session, suggested)
-        if miss is not None:
-            row.add(miss)
-        return row
-
-    def _build_miss_chip(self, task: api_client.TaskRow, session, suggested: int):
-        """"Not today" for a routine, in one click — or None when there is
-        nothing to pass on.
-
-        A routine's day is did-it-or-not, so declining one has to cost the same
-        as committing to it. Before this the only way to record a miss was to
-        plan an amount and then skip that amount: two clicks to say you did
-        nothing.
-
-        Deliberately absent in three cases. An ordinary task never had a
-        commitment to decline. A day already planned is handled by the session
-        row's own skip button, and a second identical control beside it would
-        only raise the question of whether they differ. And a month already at
-        target has nothing left to miss.
-        """
-        if task.get("pace") is None:
-            return None
-
-        missed = session is not None and session["status"] == "skipped"
-        if missed:
-            chip = Button(
-                label="⊘",
-                style_classes="plan-btn current",
-                tooltip_text="Marked as not done today",
-            )
-            chip.set_sensitive(False)
-            return chip
-
-        if session is not None or suggested <= 0:
-            return None
-
-        chip = Button(
-            label="⊘",
-            style_classes="plan-btn",
-            tooltip_text="Not today — recorded as a miss, not held against the month",
-        )
-        chip.connect(
-            "clicked",
-            lambda _btn, task_id=task["id"], m=suggested: self._on_miss(task_id, m),
-        )
-        return chip
-
-    def _build_routine_block(self, task: api_client.TaskRow):
-        """A routine, with today's session as the actionable line beneath it.
-
-        Deliberately not rendered as a normal task block. The ✓ there calls
-        complete_task, which would mark a routine finished forever, and a
-        routine's month takes the line where a dated task carries nothing —
-        so the affordances differ even though the shape should not.
-        """
-        pace = task["pace"]
-        session = self._session_for(task["id"])
-        tone = "behind" if pace["status"] == "behind" else pace["status"].replace("_", "-")
-
-        block = Box(
-            orientation="v",
-            spacing=2,
-            style_classes=f"task-block {priority_class(task['priority'], 'accent')} routine {tone}",
-        )
-
-        head = Box(orientation="h", spacing=6, style_classes="task-head")
-        head.add(
-            Label(
-                label=task.get("type") or "",
-                style_classes="type-label",
-                h_align="start",
-                h_expand=True,
-                ellipsization="end",
-            )
-        )
-        head.add(
-            Label(
-                label=f"day {pace['dayOfMonth']}/{pace['daysInMonth']}",
-                style_classes="routine-day",
-            )
-        )
-        block.add(head)
-
-        title_row = Box(orientation="h", spacing=6)
-        title_row.add(
-            Label(
-                label=clamp_title(task["title"]),
-                style_classes="task-title",
-                h_align="start",
-                h_expand=True,
-                justification="left",
-                line_wrap="word-char",
-                size=(TITLE_WIDTH, -1),
-            )
-        )
-        title_row.add(self._build_routine_toggle(task))
-        block.add(title_row)
-
-        # A routine's month is its equivalent of a deadline, so it sits on its
-        # own line above today's control — the same place a dated task now
-        # carries nothing, its deadline having moved up into the head.
-        pace_row = Box(orientation="h", spacing=6, style_classes="task-meta-row")
-        pace_row.add(
-            Label(
-                label=describe_pace(pace),
-                style_classes="task-meta" + (" overdue" if pace["status"] == "behind" else ""),
-                h_align="start",
-                h_expand=True,
-            )
-        )
-        block.add(pace_row)
-
-        block.add(self._build_today_row(task))
-
-        if self._target_picker_for == task["id"]:
-            block.add(
-                self._build_inline_entry(task, "target")
-                if self._entry_for == (task["id"], "target")
-                else self._build_target_picker(task)
-            )
-
-        if session is not None:
-            block.add(self._build_session_row(session))
-        elif pace["suggestedTodayMinutes"] > 0:
-            # Nothing promised yet: say what today wants rather than leaving
-            # the block silent about it.
-            block.add(
-                Label(
-                    label=f"nothing planned today · suggest {fmt_minutes(pace['suggestedTodayMinutes'])}",
-                    style_classes="routine-unplanned",
-                    h_align="start",
-                )
-            )
-
-        hover_box = EventBox(events=["enter-notify", "leave-notify"], child=block)
-        hover_box.connect(
-            "enter-notify-event", lambda _w, event: self._set_block_hovered(event, block, True)
-        )
-        hover_box.connect(
-            "leave-notify-event", lambda _w, event: self._set_block_hovered(event, block, False)
-        )
-        return hover_box
-
-    def _build_session_row(self, session: api_client.SessionRow) -> Box:
-        """Today's session, indented under its routine like a next step."""
-        planned = fmt_minutes(session["plannedMinutes"])
-        if session["status"] == "done":
-            actual = session["actualMinutes"] or session["plannedMinutes"]
-            text = (
-                f"{fmt_minutes(actual)} done"
-                if actual == session["plannedMinutes"]
-                else f"{fmt_minutes(actual)} done of {planned}"
-            )
-        elif session["status"] == "skipped":
-            text = "skipped today"
-        else:
-            text = f"{planned} planned today"
-
-        row = Box(orientation="h", spacing=6, style_classes="next-step-row")
-        row.add(Label(label="└", style_classes="step-connector", v_align="start"))
+        row = Box(orientation="h", spacing=6, style_classes="inline-entry-row")
         row.add(
-            Label(
-                label=text,
-                style_classes="step-title" + (" done" if session["status"] == "done" else ""),
-                h_align="start",
-                h_expand=True,
-                ellipsization="end",
-            )
+            Label(label="hours/month", style_classes="target-picker-label", h_align="start")
+        )
+        entry = Entry(
+            text=initial,
+            placeholder="20",
+            style_classes="inline-entry",
+            h_expand=True,
         )
 
-        if session["status"] == "planned":
-            done_btn = Button(
-                label="✓",
-                style_classes="complete-btn",
-                tooltip_text=f"Done — credit {planned}",
-            )
-            done_btn.connect(
-                "clicked",
-                lambda _btn, sid=session["id"]: self._on_complete_session(sid),
-            )
-            row.add(done_btn)
-            skip_btn = Button(
-                label="⊘",
-                style_classes="plan-btn",
-                tooltip_text="Skip today (does not count against the month)",
-            )
-            skip_btn.connect(
-                "clicked",
-                lambda _btn, sid=session["id"]: self._on_skip_session(sid),
-            )
-            row.add(skip_btn)
+        def commit(_widget=None) -> None:
+            minutes = parse_target_minutes(entry.get_text())
+            if minutes is None:
+                entry.add_style_class("invalid")
+                return
+            self._entry_for = None
+            self._target_picker_for = None
+            self._on_set_routine(task["id"], minutes)
+
+        def on_key(_widget, event) -> bool:
+            if event.keyval == Gdk.KEY_Escape:
+                self._close_entry()
+                return True
+            entry.remove_style_class("invalid")
+            return False
+
+        entry.connect("activate", commit)
+        entry.connect("key-press-event", on_key)
+        row.add(entry)
+
+        ok = Button(label="✓", style_classes="plan-btn current", tooltip_text="Set")
+        ok.connect("clicked", lambda _btn: commit())
+        row.add(ok)
+        cancel = Button(label="✕", style_classes="plan-btn", tooltip_text="Cancel (Esc)")
+        cancel.connect("clicked", lambda _btn: self._close_entry())
+        row.add(cancel)
+
+        GLib.idle_add(entry.grab_focus)
         return row
 
     def _set_block_hovered(self, event, block: Box, hovered: bool) -> bool:
-        """Only a style class now.
-
-        Every row a block owns is permanently visible since today's minutes
-        replaced the schedule row, so nothing reveals or collapses and the
-        block's height never moves — which also means the body height no
-        longer has to be re-synced on hover.
-        """
         # Crossing into a child (a chip, the ✓) fires leave-notify with
         # detail=INFERIOR on the EventBox itself; acting on it would flicker
         # the block the moment you moved toward a button.
@@ -1308,6 +1451,8 @@ class TaskWidget:
         else:
             block.remove_style_class("hovered")
         return False
+
+    # -- writes -------------------------------------------------------------
 
     def _write(self, work, failure_label: str) -> None:
         """Run a write, then re-poll to replace the optimistic render with the
@@ -1340,15 +1485,13 @@ class TaskWidget:
         label = "Start" if status == STATUS_IN_PROGRESS else "Stop"
         self._write(lambda: api_client.set_task_status(task_id, status), label)
 
-    # No optimistic render for the three session writes below. Every one of
-    # them changes the routine's pace, and suggestedTodayMinutes depends on
+    # No optimistic render for the session writes below. Every one of them
+    # can change a routine's pace, and suggestedTodayMinutes depends on
     # arithmetic over the whole month that this panel deliberately does not
     # reimplement — a guessed number would be shown and then visibly jump when
     # the poll landed. _write re-polls on success, so the correct numbers
     # arrive a moment later instead.
     def _on_set_routine(self, task_id: str, minutes: int | None) -> None:
-        # Closed eagerly: the picker's job is done, and leaving it open over a
-        # block that is about to move into another section reads as a glitch.
         self._target_picker_for = None
         label = "Make routine" if minutes is not None else "Stop measuring"
         self._write(lambda: api_client.set_routine_target(task_id, minutes), label)
@@ -1362,9 +1505,26 @@ class TaskWidget:
     def _on_skip_session(self, session_id: str) -> None:
         self._write(lambda: api_client.skip_session(session_id), "Skip")
 
+    def _on_cancel_session(self, session_id: str) -> None:
+        self._write(lambda: api_client.cancel_session(session_id), "Remove")
+
     def _on_miss(self, task_id: str, minutes: int) -> None:
         self._write(lambda: api_client.mark_missed(task_id, minutes), "Miss")
 
+    def _on_carry_forward(self, session: api_client.SessionRow) -> None:
+        """Plan a fresh item for today, then cancel yesterday's leftover —
+        it's superseded, not skipped (the work is still intended, just on a
+        new day), and cancel is what keeps it from sitting as "planned"
+        forever once it ages out of the missedYesterday window."""
+
+        def work() -> api_client.SessionRow:
+            new_session = api_client.plan_session(
+                session["taskId"], session["plannedMinutes"], focus_text=session.get("focusText")
+            )
+            api_client.cancel_session(session["id"])
+            return new_session
+
+        self._write(work, "Add")
 
 
 def load_css() -> None:
